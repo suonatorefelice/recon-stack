@@ -4,3 +4,12 @@ __pycache__/
 *.db
 *.sqlite
 .env
+# generati da pbr durante l installazione
+*.egg-info/
+AUTHORS
+ChangeLog
+build/
+dist/
+# ambienti di test
+.tox/
+.pytest_cache/
