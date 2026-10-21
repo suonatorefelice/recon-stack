@@ -29,16 +29,16 @@ interrogabile via dashboard e API REST, con scoperta periodica e storico dei cam
 - Rate limiting delle scansioni; avvio scansioni solo da admin
 - Log di ogni scansione (chi, quando, perimetro)
 
-## Decisioni prese (motivate in docs/adr/)
-- 0001 Scoperta senza agenti: API OpenStack (dichiarato) + scansione (reale)
-- 0002 Perimetro = subnet Neutron del progetto, ricalcolato a ogni scansione
-- 0003 Scansione interna dai namespace di rete Neutron sull'host
-- 0004 Separazione dei privilegi: recon-api senza privilegi, recon-scanner unico
+## Decisioni prese
+- Scoperta senza agenti: API OpenStack (dichiarato) + scansione (reale)
+- Perimetro = subnet Neutron del progetto, ricalcolato a ogni scansione
+- Scansione interna dai namespace di rete Neutron sull'host
+- Separazione dei privilegi: recon-api senza privilegi, recon-scanner unico
   processo che usa sudo, e solo tramite un wrapper che accetta argomenti fissi
-- 0005 Database MySQL di DevStack (SQLAlchemy + alembic); SQLite solo nei test
-- 0006 Autenticazione con token Keystone (keystonemiddleware); scansioni solo con ruolo admin
-- 0007 Servizio in stile OpenStack: pacchetto pbr, oslo.config, uwsgi sulla porta 5238
-- 0008 Scansioni eseguite dal processo recon-scanner con APScheduler; le richieste
+- Database MySQL di DevStack (SQLAlchemy + alembic); SQLite solo nei test
+- Autenticazione con token Keystone (keystonemiddleware); scansioni solo con ruolo admin
+- Servizio in stile OpenStack: pacchetto pbr, oslo.config, uwsgi sulla porta 5238
+- Scansioni eseguite dal processo recon-scanner con APScheduler; le richieste
   passano dal database
 
 ## Stack tecnico
@@ -59,7 +59,7 @@ recon_stack/                      pacchetto Python del servizio
 tools/recon-stack-netns-scan      wrapper eseguito con sudo dallo scanner
 etc/                              configurazione di esempio
 demo/setup_demo.sh                crea un progetto demo da scansionare
-docs/                             architettura, api, concetti, piano, adr/, img/
+docs/                             architettura, api, concetti, piano, img/
 README.md GLOSSARY.md setup.cfg setup.py requirements.txt tox.ini
 ```
 
@@ -80,9 +80,8 @@ README.md GLOSSARY.md setup.cfg setup.py requirements.txt tox.ini
 ## Regole di lavoro
 - Procedere per fasi (docs/piano.md), verificare ogni fase prima della successiva
 - L'autore ha basi minime su OpenStack: spiegare in italiano semplice ogni concetto e ogni scelta
-- Ogni decisione di forma ha un ADR in docs/adr/ (contesto, decisione, alternative, conseguenze, fonti)
 - Codice commentato: ogni modulo apre con un commento che dice cosa fa e perché; i
-  passaggi non ovvi sono spiegati, citando l'ADR quando serve
+  passaggi non ovvi sono spiegati
 - Commit piccoli, in italiano, con prefisso (feat/fix/docs/test/chore) e riferimento (#1);
   nessuna riga di attribuzione all'AI
 - Non eseguire scansioni fuori dal perimetro del progetto

@@ -88,7 +88,7 @@ for port in conn.network.ports(project_id=pid):          # network = Neutron
 
 nmap riporta ogni porta in uno di tre stati: `open` (c'è un servizio), `closed` (l'host risponde ma lì non c'è niente), `filtered` (nessuna risposta: un firewall ha scartato il pacchetto).
 
-Scansionare reti altrui è illegale. Per questo Recon-Stack accetta solo indirizzi che Neutron dichiara appartenere al progetto ([0002](adr/0002-perimetro-dalle-subnet-neutron.md)).
+Scansionare reti altrui è illegale. Per questo Recon-Stack accetta solo indirizzi che Neutron dichiara appartenere al progetto.
 
 ## 7. I namespace di rete
 
@@ -100,10 +100,10 @@ sudo ip netns exec ovnmeta-<id-rete> ip addr            # che indirizzo ha la st
 sudo ip netns exec ovnmeta-<id-rete> nmap -sn 10.0.0.0/24
 ```
 
-Il nome dipende da come Neutron realizza le reti: `ovnmeta-<id rete>` con OVN (predefinito nelle versioni recenti), `qdhcp-<id rete>` con OVS. Entrare in un namespace richiede i privilegi di root: come li gestiamo è in [0004](adr/0004-separazione-dei-privilegi.md).
+Il nome dipende da come Neutron realizza le reti: `ovnmeta-<id rete>` con OVN (predefinito nelle versioni recenti), `qdhcp-<id rete>` con OVS. Entrare in un namespace richiede i privilegi di root.
 
 ## 8. Service discovery: due significati
 
 "Service discovery" nei microservizi (Kubernetes, Docker) vuol dire che i servizi **si registrano** e si trovano per nome tramite un DNS interno: funziona perché l'orchestratore sa cosa gira in ogni container, glielo dichiara chi lo avvia. In OpenStack l'equivalente a livello di macchina è Designate, il DNS del cloud: dà un nome a ogni VM, ma non sa cosa gira dentro.
 
-Recon-Stack fa l'altra cosa: **scopre** cosa gira davvero, senza che nessuno lo dichiari e senza installare niente nelle VM, e lo mette a confronto con ciò che OpenStack dichiara. Il motivo della scelta è in [0001](adr/0001-scoperta-senza-agenti.md).
+Recon-Stack fa l'altra cosa: **scopre** cosa gira davvero, senza che nessuno lo dichiari e senza installare niente nelle VM, e lo mette a confronto con ciò che OpenStack dichiara.

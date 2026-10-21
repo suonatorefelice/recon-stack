@@ -8,7 +8,7 @@ Per una spiegazione discorsiva dei componenti OpenStack vedi [docs/concetti.md](
 
 | Termine | Significato | Proprietario |
 | --- | --- | --- |
-| **Perimetro** | l'insieme degli indirizzi che è lecito scansionare: le subnet Neutron di un progetto, e nient'altro ([0002](docs/adr/0002-perimetro-dalle-subnet-neutron.md)) | recon-stack |
+| **Perimetro** | l'insieme degli indirizzi che è lecito scansionare: le subnet Neutron di un progetto, e nient'altro | recon-stack |
 | **Scansione** | un'esecuzione completa su un progetto: inventario, host discovery, service discovery, riconciliazione. Ha un autore, un inizio, una fine, un esito | recon-stack |
 | **Inventario** | ciò che OpenStack **dichiara**: VM, porte, IP, floating IP, security group, letti dalle API | recon-stack |
 | **Osservato** | ciò che la scansione **vede**: host che rispondono, porte aperte, servizi | recon-stack |
@@ -19,7 +19,7 @@ Per una spiegazione discorsiva dei componenti OpenStack vedi [docs/concetti.md](
 | **Servizio** | un programma in ascolto su una porta di un host: porta, protocollo, nome, prodotto, versione (es. `22/tcp ssh OpenSSH 8.9p1`) | recon-stack |
 | **Catalogo** | l'elenco dei servizi dell'ultima scansione, interrogabile per servizio, host, rete, versione | recon-stack |
 | **Diff** | le differenze fra una scansione e la precedente: host e servizi comparsi, spariti, cambiati di versione | recon-stack |
-| **Vista interna** | la scansione fatta dall'interno della rete del progetto, tramite un namespace di rete ([0003](docs/adr/0003-scansione-dai-namespace-di-rete.md)) | recon-stack |
+| **Vista interna** | la scansione fatta dall'interno della rete del progetto, tramite un namespace di rete | recon-stack |
 | **Vista esterna** | la scansione dei floating IP fatta dalla rete `public`: ciò che vede chi sta fuori dal cloud | recon-stack |
 | **Servizio esposto** | servizio raggiungibile dalla vista esterna | recon-stack |
 | **Servizio latente** | servizio in ascolto ma bloccato dal security group: innocuo oggi, esposto il giorno in cui qualcuno apre la regola | recon-stack |
