@@ -29,22 +29,21 @@ interrogabile via dashboard e API REST, con scoperta periodica e storico dei cam
 - Rate limiting delle scansioni; avvio scansioni solo da admin
 - Log di ogni scansione (chi, quando, perimetro)
 
-## Decisioni prese
-- Scoperta senza agenti: API OpenStack (dichiarato) + scansione (reale)
-- Perimetro = subnet Neutron del progetto, ricalcolato a ogni scansione
-- Scansione interna dai namespace di rete Neutron sull'host
-- Separazione dei privilegi: recon-api senza privilegi, recon-scanner unico
-  processo che usa sudo, e solo tramite un wrapper che accetta argomenti fissi
-- Database MySQL di DevStack (SQLAlchemy + alembic); SQLite solo nei test
-- Autenticazione con token Keystone (keystonemiddleware); scansioni solo con ruolo admin
-- Servizio in stile OpenStack: pacchetto pbr, oslo.config, uwsgi sulla porta 5238
-- Scansioni eseguite dal processo recon-scanner con APScheduler; le richieste
-  passano dal database
+## Decisioni prese (motivate in docs/adr/)
+- 0001 Database SQLite in modalità WAL, SQLAlchemy + Alembic; connessione in configurazione
+- 0002 Autenticazione con token Keystone (keystonemiddleware); scansioni solo con ruolo admin
+- 0003 Scoperta senza agenti: scanner sul nodo DevStack, fuori dalle VM
+- 0004 Scheduler (APScheduler) in un processo separato dalla API; comunicano via database
+- 0005 Perimetro dalle subnet Neutron del progetto + floating IP, ricalcolato a ogni scansione
+- 0006 Vista interna dalle network namespace di Neutron (OVN: ovnmeta-; OVS: qdhcp-/qrouter-)
+- 0007 Operazioni privilegiate solo tramite oslo.privsep; API e scheduler senza privilegi
+- 0008 Flask + uwsgi in ascolto diretto sulla porta 5238, servizio `recon` nel catalogo Keystone
+- 0009 Plugin DevStack `recon-stack` con fasi install, post-config, extra, unstack, clean
 
 ## Stack tecnico
 Python, Flask, APScheduler, openstacksdk (cloud "devstack-admin" da
 /etc/openstack/clouds.yaml), python-nmap, SQLAlchemy + alembic, oslo.config,
-keystonemiddleware, uwsgi, Graphviz, Jinja2. Porta interfaccia: 5238.
+keystonemiddleware, oslo.privsep, uwsgi, Graphviz, Jinja2. Porta interfaccia: 5238.
 
 ## Struttura repo
 ```
@@ -52,20 +51,21 @@ devstack/{settings,plugin.sh}     plugin DevStack
 recon_stack/                      pacchetto Python del servizio
   api/        app Flask, API REST /v1, dashboard
   scanner/    inventario, perimetro, discovery, riconciliazione, scheduler
-  db/         modelli, accesso ai dati, migrazioni alembic
+  privsep/    le sole funzioni eseguite con privilegi (oslo.privsep)
+  db/         modelli, accesso ai dati, migrazioni alembic (SQLite)
   report/     mappa Graphviz e report
   templates/  pagine Jinja2
   tests/      unit/ (tox, senza OpenStack) e tempest/ (su DevStack)
-tools/recon-stack-netns-scan      wrapper eseguito con sudo dallo scanner
 etc/                              configurazione di esempio
 demo/setup_demo.sh                crea un progetto demo da scansionare
-docs/                             architettura, api, concetti, piano, img/
+docs/                             architettura, api, concetti, piano, adr/, img/
 README.md GLOSSARY.md setup.cfg setup.py requirements.txt tox.ini
 ```
 
 ## Plugin DevStack
-- install: setup_develop del pacchetto, install_package nmap graphviz, wrapper + regola sudo
-- post-config: file di configurazione, database e migrazioni, servizio ed endpoint in Keystone
+- install: setup_develop del pacchetto, install_package nmap graphviz
+- post-config: file di configurazione, database e migrazioni, utente di servizio,
+  servizio ed endpoint in Keystone
 - extra: run_process recon-api (uwsgi :5238) e recon-scanner
 - unstack: stop_process; clean: rimozione configurazione
 - Attivazione: enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
@@ -79,6 +79,7 @@ README.md GLOSSARY.md setup.cfg setup.py requirements.txt tox.ini
 
 ## Regole di lavoro
 - Procedere per fasi (docs/piano.md), verificare ogni fase prima della successiva
+- Le scelte di forma sono negli ADR in docs/adr/: il codice deve rispettarle
 - L'autore ha basi minime su OpenStack: spiegare in italiano semplice ogni concetto e ogni scelta
 - Codice commentato: ogni modulo apre con un commento che dice cosa fa e perché; i
   passaggi non ovvi sono spiegati
