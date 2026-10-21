@@ -3,6 +3,12 @@
 Plugin DevStack per OpenStack: service discovery automatico senza agenti.
 Progetto d'esame (Magistrale Sicurezza Informatica e Tecnologie Cloud, UNISA).
 
+## Contesto d'uso
+Progetto didattico, sviluppato e provato esclusivamente in laboratorio, su un'installazione
+DevStack di proprietà dell'autore. Le scansioni riguardano solo VM e reti create a questo
+scopo (demo/setup_demo.sh). È uno strumento difensivo di inventario: serve a chi amministra
+il cloud per sapere cosa gira nelle proprie reti.
+
 ## Obiettivo
 Scoprire host e servizi attivi nelle reti di un progetto OpenStack (porte, servizio,
 versione), associarli alle risorse Nova/Neutron e pubblicarli in un catalogo
