@@ -1,0 +1,17 @@
+# Esempio di configurazione di Recon-Stack.
+#
+# In DevStack il plugin scrive il file vero in /etc/recon-stack/recon-stack.conf.
+# Ogni opzione è spiegata in recon_stack/conf.py; qui ci sono i valori
+# predefiniti, commentati: si toglie il # per cambiarne uno.
+
+[DEFAULT]
+# Scrive nei log anche i messaggi di dettaglio (livello DEBUG).
+#debug = false
+
+[api]
+# Porta TCP su cui ascolta recon-api.
+#port = 5238
+
+[scanner]
+# Ogni quanti secondi recon-scanner scrive nel log che è attivo.
+#heartbeat_interval = 60
