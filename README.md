@@ -82,6 +82,25 @@ $ sudo systemctl status devstack@recon-api devstack@recon-scanner
 $ openstack catalog list        # compare il servizio recon-stack, tipo recon
 ```
 
+### Verificare l'inventario (step 4)
+
+Sul nodo DevStack, con le credenziali admin caricate:
+
+```console
+$ source /opt/stack/devstack/openrc admin admin
+$ bash demo/setup_demo.sh                          # crea il progetto recon-demo
+$ recon-stack-inventory --project recon-demo \
+    --config-file /etc/recon-stack/recon-stack.conf
+```
+
+Il riepilogo stampato deve coincidere con:
+
+```console
+$ openstack server list      --project recon-demo
+$ openstack port list        --project recon-demo
+$ openstack floating ip list --project recon-demo
+```
+
 Le istruzioni complete arriveranno con lo sviluppo: lo stato di avanzamento è in [docs/piano.md](docs/piano.md).
 
 ## Sviluppo in locale
