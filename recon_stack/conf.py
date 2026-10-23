@@ -51,7 +51,32 @@ scanner_opts = [
     ),
 ]
 
+# Sezione [database] (ADR 0001).
+database_group = cfg.OptGroup("database", title="Opzioni del database")
+database_opts = [
+    cfg.StrOpt(
+        "connection",
+        default="sqlite:///recon-stack.sqlite",
+        secret=True,
+        help="Indirizzo del database nel formato di SQLAlchemy. Il valore "
+             "predefinito è un file SQLite nella cartella corrente, comodo "
+             "durante lo sviluppo; in DevStack il plugin indica un file in "
+             "$DATA_DIR/recon-stack/. Per MySQL: "
+             "mysql+pymysql://utente:password@host/recon_stack",
+    ),
+    cfg.IntOpt(
+        "busy_timeout",
+        default=5000,
+        min=0,
+        help="Solo SQLite: per quanti millisecondi chi deve scrivere aspetta "
+             "che finisca la scrittura di un altro processo, prima di "
+             "rinunciare con un errore.",
+    ),
+]
+
 CONF.register_opts(default_opts)
+CONF.register_group(database_group)
+CONF.register_opts(database_opts, group=database_group)
 CONF.register_group(api_group)
 CONF.register_opts(api_opts, group=api_group)
 CONF.register_group(scanner_group)
@@ -66,6 +91,7 @@ def list_opts():
     """
     return [
         (None, default_opts),
+        (database_group, database_opts),
         (api_group, api_opts),
         (scanner_group, scanner_opts),
     ]

@@ -8,6 +8,13 @@
 # Scrive nei log anche i messaggi di dettaglio (livello DEBUG).
 #debug = false
 
+[database]
+# Indirizzo del database nel formato di SQLAlchemy. In DevStack il plugin
+# indica un file in $DATA_DIR/recon-stack/.
+#connection = sqlite:///recon-stack.sqlite
+# Solo SQLite: millisecondi di attesa se un altro processo sta scrivendo.
+#busy_timeout = 5000
+
 [api]
 # Porta TCP su cui ascolta recon-api.
 #port = 5238
