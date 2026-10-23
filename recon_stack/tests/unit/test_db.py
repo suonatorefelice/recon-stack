@@ -32,8 +32,10 @@ def db(tmp_path):
 
 def test_le_migrazioni_creano_le_tabelle(db):
     tables = sqlalchemy.inspect(api.get_engine()).get_table_names()
-    assert {"scans", "hosts", "services", "alembic_version"} <= set(tables)
-    assert migration.current_revision() == "0001"
+    assert {"scans", "hosts", "services",
+            "inventory_servers", "inventory_ports", "inventory_floating_ips",
+            "alembic_version"} <= set(tables)
+    assert migration.current_revision() == "0002"
 
 
 def test_modelli_e_migrazioni_descrivono_lo_stesso_schema(db):
@@ -56,7 +58,7 @@ def test_dbsync_si_puo_ripetere(db):
     # Il database è già aggiornato dalla fixture: rilanciare il comando non
     # deve dare errori né cambiare la revisione.
     dbsync.main([])
-    assert migration.current_revision() == "0001"
+    assert migration.current_revision() == "0002"
 
 
 # --- Operazioni sulle scansioni ---------------------------------------------

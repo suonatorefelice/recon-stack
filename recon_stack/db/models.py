@@ -91,6 +91,15 @@ class Scan(Base):
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="scan", cascade="all, delete-orphan")
+    # La "fotografia" dell'inventario letto da OpenStack all'inizio della
+    # scansione (step 4): serve a classificare gli host e resta allegata alla
+    # scansione, così ogni scansione sa su quali risorse si basava.
+    servers: Mapped[list["InventoryServer"]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan")
+    ports: Mapped[list["InventoryPort"]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan")
+    floating_ips: Mapped[list["InventoryFloatingIp"]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan")
 
 
 class Host(Base):
@@ -134,3 +143,72 @@ class Service(Base):
     view: Mapped[str] = mapped_column(String(16))
 
     host: Mapped[Host] = relationship(back_populates="services")
+
+
+# --- Inventario: la fotografia delle risorse OpenStack (step 4) --------------
+#
+# Queste tabelle salvano ciò che il servizio ha letto da Nova e Neutron
+# all'inizio di una scansione (ADR 0003: solo lettura, mai modifiche). Non
+# sono la verità sulle risorse — quella resta OpenStack (ADR 0001) — ma la
+# copia usata da quella scansione: così, anche a distanza di tempo, si sa quali
+# VM, porte e floating IP c'erano quando la scansione è stata fatta.
+
+
+class InventoryServer(Base):
+    """Una VM (server Nova) del progetto, come letta all'inizio della scansione."""
+
+    __tablename__ = "inventory_servers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id"), index=True)
+    # id della VM in Nova (lo stesso che mostra "openstack server list").
+    server_id: Mapped[str] = mapped_column(String(36), index=True)
+    name: Mapped[str | None] = mapped_column(String(255))
+    # Stato Nova: ACTIVE, SHUTOFF, ... Una VM spenta esiste ma non risponderà.
+    status: Mapped[str | None] = mapped_column(String(32))
+
+    scan: Mapped[Scan] = relationship(back_populates="servers")
+
+
+class InventoryPort(Base):
+    """Un indirizzo IP fisso di una porta Neutron del progetto.
+
+    Una porta Neutron può avere più IP fissi: salviamo una riga per ogni IP,
+    così la colonna ip_address contiene sempre un solo indirizzo ed è facile,
+    più avanti (step 6), ritrovare la porta a partire da un IP visto nella rete.
+    """
+
+    __tablename__ = "inventory_ports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id"), index=True)
+    port_id: Mapped[str] = mapped_column(String(36), index=True)
+    network_id: Mapped[str | None] = mapped_column(String(36))
+    subnet_id: Mapped[str | None] = mapped_column(String(36))
+    ip_address: Mapped[str] = mapped_column(String(45), index=True)
+    mac_address: Mapped[str | None] = mapped_column(String(32))
+    # A cosa serve la porta: "compute:nova" è una VM, "network:router_interface"
+    # un router, "network:dhcp" il DHCP. Serve a distinguere le porte delle VM
+    # da quelle dell'infrastruttura di rete.
+    device_owner: Mapped[str | None] = mapped_column(String(64))
+    # Risorsa a cui la porta è attaccata: per una VM è l'id del server Nova.
+    device_id: Mapped[str | None] = mapped_column(String(255))
+
+    scan: Mapped[Scan] = relationship(back_populates="ports")
+
+
+class InventoryFloatingIp(Base):
+    """Un floating IP del progetto e la porta interna a cui è associato."""
+
+    __tablename__ = "inventory_floating_ips"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id"), index=True)
+    floating_ip_id: Mapped[str] = mapped_column(String(36), index=True)
+    # L'indirizzo pubblico (sulla rete esterna) e l'IP privato a cui inoltra.
+    floating_ip_address: Mapped[str] = mapped_column(String(45), index=True)
+    fixed_ip_address: Mapped[str | None] = mapped_column(String(45))
+    # Porta Neutron a cui il floating IP è associato, se è associato.
+    port_id: Mapped[str | None] = mapped_column(String(36))
+
+    scan: Mapped[Scan] = relationship(back_populates="floating_ips")
