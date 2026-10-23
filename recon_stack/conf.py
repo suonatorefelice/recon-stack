@@ -65,6 +65,14 @@ scanner_opts = [
              "(ADR 0005). Oltre questa soglia la scansione non parte: serve a "
              "evitare scansioni interminabili su subnet molto grandi (es. /16).",
     ),
+    cfg.IntOpt(
+        "min_scan_interval",
+        default=60,
+        min=0,
+        help="Secondi minimi fra due scansioni avviate dello stesso progetto "
+             "(limite di frequenza, Step 5). Una richiesta che arriva prima "
+             "viene rifiutata e registrata nel log. 0 disattiva il limite.",
+    ),
 ]
 
 # Sezione [database] (ADR 0001).
