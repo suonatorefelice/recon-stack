@@ -51,6 +51,24 @@ function configure_recon_stack {
     # invece di stare dietro Apache (ADR 0008). Il terzo, il percorso sotto
     # Apache, in questo caso non serve.
     write_uwsgi_config "$RECON_UWSGI_CONF" "$RECON_UWSGI" "" "0.0.0.0:$RECON_API_PORT" "recon-api"
+
+    configure_recon_stack_privsep
+}
+
+function configure_recon_stack_privsep {
+    # Il demone privilegiato di oslo.privsep (ADR 0007) esegue le operazioni
+    # che richiedono root (entrare nelle network namespace per l'host
+    # discovery). oslo.privsep lo avvia con "sudo privsep-helper": qui diciamo
+    # a privsep quale comando usare e diamo allo $STACK_USER (l'utente non
+    # privilegiato con cui girano i processi) il permesso di lanciarlo senza
+    # password. È l'unico comando che gli concediamo via sudo.
+    local helper
+    helper="$(get_python_exec_prefix)/privsep-helper"
+    iniset $RECON_CONF privsep helper_command "sudo $helper --config-file $RECON_CONF"
+
+    local sudoers=/etc/sudoers.d/recon-stack-privsep
+    echo "$STACK_USER ALL=(root) NOPASSWD: $helper *" | sudo tee $sudoers >/dev/null
+    sudo chmod 440 $sudoers
 }
 
 function init_recon_stack {
@@ -106,6 +124,8 @@ function cleanup_recon_stack {
     # un sito Apache, perché recon-api non ne ha uno: ascolta direttamente
     # sulla sua porta.
     sudo rm -rf $RECON_CONF_DIR $RECON_DATA_DIR
+    # E la regola sudo del demone di privsep.
+    sudo rm -f /etc/sudoers.d/recon-stack-privsep
 }
 
 # --- smistamento: cosa fare in ogni momento ----------------------------------

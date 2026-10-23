@@ -101,6 +101,20 @@ $ openstack port list        --project recon-demo
 $ openstack floating ip list --project recon-demo
 ```
 
+### Eseguire una scansione (step 6)
+
+Sempre sul nodo DevStack, dopo aver creato il progetto demo. La scansione entra
+nelle network namespace di Neutron, quindi va lanciata con `sudo`:
+
+```console
+$ sudo recon-stack-scan --project recon-demo \
+    --config-file /etc/recon-stack/recon-stack.conf
+```
+
+Stampa gli host trovati divisi in **censiti** (le VM demo, con il loro nome),
+**sconosciuti** (rispondono ma senza porta Neutron) e **assenti** (hanno una
+porta ma non rispondono). I servizi sulle porte arrivano con lo step 7.
+
 Le istruzioni complete arriveranno con lo sviluppo: lo stato di avanzamento è in [docs/piano.md](docs/piano.md).
 
 ## Sviluppo in locale
