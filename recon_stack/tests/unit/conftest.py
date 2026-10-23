@@ -6,6 +6,7 @@
 import pytest
 
 from recon_stack import conf
+from recon_stack.db import api
 
 
 @pytest.fixture(autouse=True)
@@ -20,3 +21,6 @@ def clean_conf():
     yield
     conf.CONF.reset()
     conf.CONF.clear()
+    # Anche il collegamento al database è globale: lo chiudiamo, così il test
+    # successivo ne apre uno nuovo verso il suo database.
+    api.reset()
