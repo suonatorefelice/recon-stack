@@ -7,3 +7,5 @@ SQLAlchemy>=2.0.0    # accesso al database con classi Python invece di SQL scrit
 alembic>=1.10.0      # migrazioni: le modifiche allo schema del database, numerate (ADR 0001)
 openstacksdk>=1.0.0  # legge l'inventario da Nova e Neutron (cloud da /etc/openstack/clouds.yaml)
 keystonemiddleware>=10.0.0  # valida i token Keystone davanti alla API (ADR 0002)
+oslo.privsep>=2.6.0  # confina in un demone le operazioni privilegiate (host discovery nei namespace, ADR 0007)
+oslo.concurrency>=5.0.0  # esecuzione di comandi esterni (nmap) in modo sicuro (processutils)
