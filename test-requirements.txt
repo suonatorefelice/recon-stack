@@ -1,0 +1,2 @@
+# Dipendenze necessarie solo per eseguire i test, non per il servizio.
+pytest>=7.0   # esegue i test in recon_stack/tests/unit
