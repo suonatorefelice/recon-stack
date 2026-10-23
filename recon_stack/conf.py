@@ -49,6 +49,14 @@ scanner_opts = [
              "Serve a verificare che il processo giri anche prima che esegua "
              "scansioni vere.",
     ),
+    cfg.StrOpt(
+        "cloud",
+        default="devstack-admin",
+        help="Nome del cloud da usare in /etc/openstack/clouds.yaml per "
+             "leggere l'inventario da Nova e Neutron (ADR 0003). In DevStack "
+             "il profilo 'devstack-admin' ha il ruolo admin, necessario per "
+             "vedere le risorse di tutti i progetti.",
+    ),
 ]
 
 # Sezione [database] (ADR 0001).

@@ -22,3 +22,6 @@
 [scanner]
 # Ogni quanti secondi recon-scanner scrive nel log che è attivo.
 #heartbeat_interval = 60
+# Nome del cloud in /etc/openstack/clouds.yaml da cui leggere l'inventario
+# (Nova e Neutron). In DevStack 'devstack-admin' ha il ruolo admin.
+#cloud = devstack-admin

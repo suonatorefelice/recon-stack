@@ -5,3 +5,4 @@ oslo.config>=9.0.0   # file di configurazione in stile OpenStack (/etc/recon-sta
 APScheduler>=3.10,<4 # esecuzione periodica dei compiti nel processo recon-scanner (ADR 0004)
 SQLAlchemy>=2.0.0    # accesso al database con classi Python invece di SQL scritto a mano (ADR 0001)
 alembic>=1.10.0      # migrazioni: le modifiche allo schema del database, numerate (ADR 0001)
+openstacksdk>=1.0.0  # legge l'inventario da Nova e Neutron (cloud da /etc/openstack/clouds.yaml)
