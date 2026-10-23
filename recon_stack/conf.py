@@ -57,6 +57,14 @@ scanner_opts = [
              "il profilo 'devstack-admin' ha il ruolo admin, necessario per "
              "vedere le risorse di tutti i progetti.",
     ),
+    cfg.IntOpt(
+        "max_perimeter_addresses",
+        default=65536,
+        min=1,
+        help="Numero massimo di indirizzi interni che un perimetro può avere "
+             "(ADR 0005). Oltre questa soglia la scansione non parte: serve a "
+             "evitare scansioni interminabili su subnet molto grandi (es. /16).",
+    ),
 ]
 
 # Sezione [database] (ADR 0001).

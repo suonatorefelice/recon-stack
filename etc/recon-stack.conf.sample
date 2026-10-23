@@ -25,3 +25,6 @@
 # Nome del cloud in /etc/openstack/clouds.yaml da cui leggere l'inventario
 # (Nova e Neutron). In DevStack 'devstack-admin' ha il ruolo admin.
 #cloud = devstack-admin
+# Numero massimo di indirizzi interni che un perimetro può avere (ADR 0005):
+# oltre la soglia la scansione non parte.
+#max_perimeter_addresses = 65536
