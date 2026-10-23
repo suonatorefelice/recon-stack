@@ -41,11 +41,22 @@ function configure_recon_stack {
     iniset $RECON_CONF DEFAULT debug $ENABLE_DEBUG_LOG_LEVEL
     iniset $RECON_CONF api port $RECON_API_PORT
 
+    # Database SQLite (ADR 0001). L'indirizzo ha quattro barre perché è
+    # "sqlite:///" seguito da un percorso assoluto che inizia con "/".
+    sudo install -d -o $STACK_USER $RECON_DATA_DIR
+    iniset $RECON_CONF database connection "sqlite:///$RECON_DB_FILE"
+
     # Configurazione di uwsgi. Il quarto argomento è l'indirizzo su cui
     # ascoltare: passandolo, uwsgi risponde direttamente sulla porta 5238
     # invece di stare dietro Apache (ADR 0008). Il terzo, il percorso sotto
     # Apache, in questo caso non serve.
     write_uwsgi_config "$RECON_UWSGI_CONF" "$RECON_UWSGI" "" "0.0.0.0:$RECON_API_PORT" "recon-api"
+}
+
+function init_recon_stack {
+    # Crea le tabelle, o le aggiorna se il database c'è già: il comando
+    # applica solo le migrazioni che mancano (recon_stack/cmd/dbsync.py).
+    $(get_python_exec_prefix)/recon-stack-dbsync --config-file $RECON_CONF
 }
 
 function create_recon_stack_accounts {
@@ -81,9 +92,10 @@ function stop_recon_stack {
 }
 
 function cleanup_recon_stack {
-    # Toglie la configurazione. Non serve togliere un sito Apache, perché
-    # recon-api non ne ha uno: ascolta direttamente sulla sua porta.
-    sudo rm -rf $RECON_CONF_DIR
+    # Toglie configurazione e dati, compreso il database. Non serve togliere
+    # un sito Apache, perché recon-api non ne ha uno: ascolta direttamente
+    # sulla sua porta.
+    sudo rm -rf $RECON_CONF_DIR $RECON_DATA_DIR
 }
 
 # --- smistamento: cosa fare in ogni momento ----------------------------------
@@ -97,6 +109,7 @@ if is_service_enabled recon-api recon-scanner; then
         # A questo punto Keystone è già avviato: si può registrare il servizio.
         echo_summary "Configurazione di Recon-Stack"
         configure_recon_stack
+        init_recon_stack
         create_recon_stack_accounts
 
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then

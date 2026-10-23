@@ -23,6 +23,11 @@ RECON_DIR=${RECON_DIR:-$DEST/recon-stack}
 RECON_CONF_DIR=${RECON_CONF_DIR:-/etc/recon-stack}
 RECON_CONF=$RECON_CONF_DIR/recon-stack.conf
 
+# Dati del servizio: qui sta il file SQLite (ADR 0001). $DATA_DIR è la
+# cartella dei dati di DevStack, di solito /opt/stack/data.
+RECON_DATA_DIR=${RECON_DATA_DIR:-$DATA_DIR/recon-stack}
+RECON_DB_FILE=$RECON_DATA_DIR/recon-stack.sqlite
+
 # recon-api: uwsgi in ascolto diretto sulla porta 5238 (ADR 0008).
 RECON_API_PORT=${RECON_API_PORT:-5238}
 RECON_UWSGI=recon_stack.api.wsgi:application
