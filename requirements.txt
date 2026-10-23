@@ -3,3 +3,5 @@ pbr>=6.0.0           # packaging in stile OpenStack (setup.py, setup.cfg)
 Flask>=2.2.0         # applicazione web: API REST e dashboard
 oslo.config>=9.0.0   # file di configurazione in stile OpenStack (/etc/recon-stack/recon-stack.conf)
 APScheduler>=3.10,<4 # esecuzione periodica dei compiti nel processo recon-scanner (ADR 0004)
+SQLAlchemy>=2.0.0    # accesso al database con classi Python invece di SQL scritto a mano (ADR 0001)
+alembic>=1.10.0      # migrazioni: le modifiche allo schema del database, numerate (ADR 0001)
