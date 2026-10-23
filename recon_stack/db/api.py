@@ -125,6 +125,19 @@ def get_scan(scan_id):
         return session.get(models.Scan, scan_id)
 
 
+def update_scan(scan_id, **fields):
+    """Aggiorna alcuni campi di una scansione (stato, orari, perimetro, fault).
+
+    Es. update_scan(id, status=SCAN_RUNNING, started_at=utcnow()). Serve
+    all'esecuzione della scansione (scanner/scan.py), che fa avanzare lo stato.
+    """
+    with session_scope() as session:
+        scan = session.get(models.Scan, scan_id)
+        for name, value in fields.items():
+            setattr(scan, name, value)
+        return scan
+
+
 def list_scans(project_id=None, status=None):
     """Elenco delle scansioni, dalla più recente, filtrabile per progetto e stato."""
     query = sqlalchemy.select(models.Scan).order_by(models.Scan.created_at.desc())
@@ -132,6 +145,28 @@ def list_scans(project_id=None, status=None):
         query = query.where(models.Scan.project_id == project_id)
     if status is not None:
         query = query.where(models.Scan.status == status)
+    with session_scope() as session:
+        return list(session.scalars(query))
+
+
+# --- Host --------------------------------------------------------------------
+
+def save_hosts(scan_id, hosts):
+    """Salva gli host trovati da una scansione.
+
+    hosts è una lista di dizionari con i campi di models.Host (li produce
+    scanner/discovery.classify). Li scriviamo tutti insieme.
+    """
+    with session_scope() as session:
+        session.add_all(
+            models.Host(scan_id=scan_id, **host) for host in hosts)
+
+
+def get_hosts(scan_id, classification=None):
+    """Elenco degli host di una scansione, filtrabile per classificazione."""
+    query = sqlalchemy.select(models.Host).where(models.Host.scan_id == scan_id)
+    if classification is not None:
+        query = query.where(models.Host.classification == classification)
     with session_scope() as session:
         return list(session.scalars(query))
 
