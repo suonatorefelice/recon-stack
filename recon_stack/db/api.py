@@ -134,3 +134,39 @@ def list_scans(project_id=None, status=None):
         query = query.where(models.Scan.status == status)
     with session_scope() as session:
         return list(session.scalars(query))
+
+
+# --- Inventario --------------------------------------------------------------
+
+def save_inventory(servers, ports, floating_ips):
+    """Salva la fotografia dell'inventario di una scansione.
+
+    Riceve liste di oggetti InventoryServer, InventoryPort e
+    InventoryFloatingIp già pronti (li costruisce scanner/inventory.py) e li
+    scrive tutti insieme: o entra tutta la fotografia, o nessun pezzo (il
+    commit/rollback di session_scope).
+    """
+    with session_scope() as session:
+        session.add_all(servers)
+        session.add_all(ports)
+        session.add_all(floating_ips)
+
+
+def get_inventory(scan_id):
+    """Restituisce l'inventario salvato per una scansione.
+
+    Torna un dizionario con le tre liste: comodo per i test e, più avanti, per
+    chi deve classificare gli host a partire dalle porte.
+    """
+    with session_scope() as session:
+        return {
+            "servers": list(session.scalars(
+                sqlalchemy.select(models.InventoryServer)
+                .where(models.InventoryServer.scan_id == scan_id))),
+            "ports": list(session.scalars(
+                sqlalchemy.select(models.InventoryPort)
+                .where(models.InventoryPort.scan_id == scan_id))),
+            "floating_ips": list(session.scalars(
+                sqlalchemy.select(models.InventoryFloatingIp)
+                .where(models.InventoryFloatingIp.scan_id == scan_id))),
+        }
