@@ -69,6 +69,16 @@ function create_recon_stack_accounts {
         "Recon-Stack: service discovery senza agenti")
     get_or_create_endpoint $service "$REGION_NAME" \
         "$SERVICE_PROTOCOL://$SERVICE_HOST:$RECON_API_PORT"
+
+    # Utente di servizio per keystonemiddleware (ADR 0002): con questo utente il
+    # middleware parla con Keystone per validare i token in arrivo. Lo crea
+    # DevStack nel progetto di servizio, con la password standard SERVICE_PASSWORD.
+    create_service_user "recon-stack"
+
+    # Scrive la sezione [keystone_authtoken] in recon-stack.conf (indirizzo di
+    # Keystone, utente di servizio, password): la riempie DevStack. Il nostro
+    # codice la legge tramite keystonemiddleware (recon_stack/api/middleware.py).
+    configure_keystone_authtoken_middleware $RECON_CONF recon-stack
 }
 
 # --- stack extra: avvio dei processi -----------------------------------------

@@ -11,6 +11,10 @@
 
 from recon_stack import conf
 from recon_stack.api import app
+from recon_stack.api import middleware
 
 conf.load()
-application = app.create_app()
+# keystonemiddleware valida il token e aggiunge le intestazioni con l'identità
+# (ADR 0002). Lo mettiamo solo qui, nel percorso di produzione (uwsgi): lo
+# sviluppo locale usa direttamente create_app, senza Keystone.
+application = middleware.install_auth_token(app.create_app())
