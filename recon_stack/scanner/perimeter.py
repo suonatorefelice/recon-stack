@@ -99,6 +99,21 @@ class Perimeter:
         if outside:
             raise PerimeterError(outside)
 
+    def hosts_by_network(self):
+        """Indirizzi interni da provare, raggruppati per rete.
+
+        Per ogni rete restituisce la lista degli indirizzi utilizzabili delle
+        sue subnet (net.hosts() esclude già rete e broadcast). Serve all'host
+        discovery (scanner/discovery.py), che entra una namespace per rete
+        (ADR 0006) e prova gli indirizzi di quella rete.
+        """
+        result = {}
+        for subnet in self.internal_subnets:
+            net = ipaddress.ip_network(subnet["cidr"])
+            addresses = result.setdefault(subnet["network_id"], [])
+            addresses.extend(str(host) for host in net.hosts())
+        return result
+
     def as_dict(self):
         """Riepilogo serializzabile, da salvare nel log della scansione.
 
