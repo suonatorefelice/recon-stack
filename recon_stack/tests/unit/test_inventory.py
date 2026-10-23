@@ -56,10 +56,21 @@ class _Network:
         return list(self._floating_ips)
 
 
+class _Identity:
+    def __init__(self, project):
+        self._project = project
+
+    def find_project(self, name_or_id, ignore_missing=True):
+        return self._project
+
+
 class FakeConnection:
-    def __init__(self, servers=(), ports=(), floating_ips=()):
+    def __init__(self, servers=(), ports=(), floating_ips=(), project=None):
         self.compute = _Compute(servers)
         self.network = _Network(ports, floating_ips)
+        # Per il comando recon-stack-inventory, che risolve il progetto.
+        self.identity = _Identity(
+            project or _obj(id="progetto-1", name="recon-demo"))
 
 
 # --- Test --------------------------------------------------------------------
@@ -129,3 +140,38 @@ def test_inventario_vuoto(db):
     inventory.collect_and_save(FakeConnection(), "progetto-1", scan.id)
     saved = api.get_inventory(scan.id)
     assert saved == {"servers": [], "ports": [], "floating_ips": []}
+
+
+def test_comando_inventory_crea_una_scansione_e_salva(db, monkeypatch, capsys):
+    # Il comando usa cloud.connect() per aprire la connessione: la sostituiamo
+    # con quella finta, così il test non tocca OpenStack.
+    from recon_stack.cmd import inventory as cmd_inventory
+
+    conn = FakeConnection(
+        servers=[_obj(id="vm-1", name="web", status="ACTIVE")],
+        project=_obj(id="progetto-1", name="recon-demo"),
+    )
+    monkeypatch.setattr(cmd_inventory.cloud, "connect", lambda: conn)
+
+    exit_code = cmd_inventory.main(["--project", "recon-demo"])
+    assert exit_code == 0
+
+    # Ha creato esattamente una scansione per quel progetto, con l'inventario.
+    scans = api.list_scans(project_id="progetto-1")
+    assert len(scans) == 1
+    saved = api.get_inventory(scans[0].id)
+    assert len(saved["servers"]) == 1
+    # E ha stampato un riepilogo leggibile.
+    assert "web" in capsys.readouterr().out
+
+
+def test_comando_inventory_progetto_inesistente(db, monkeypatch):
+    from recon_stack.cmd import inventory as cmd_inventory
+
+    conn = FakeConnection(project=None)
+    # find_project che restituisce None: progetto non trovato.
+    conn.identity = _Identity(None)
+    monkeypatch.setattr(cmd_inventory.cloud, "connect", lambda: conn)
+
+    assert cmd_inventory.main(["--project", "non-esiste"]) == 1
+    assert api.list_scans() == []
