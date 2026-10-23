@@ -1,0 +1,33 @@
+# Carta d'identità del plugin DevStack di Recon-Stack (ADR 0009).
+#
+# DevStack legge questo file subito dopo aver scaricato il repository, prima
+# di installare qualsiasi cosa. Qui si dichiara il plugin, si abilitano i suoi
+# servizi e si definiscono le variabili usate da plugin.sh.
+#
+# Si abilita in local.conf con:
+#   enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
+
+define_plugin recon-stack
+
+# I due processi del servizio (ADR 0004). Ognuno diventa un servizio systemd
+# chiamato devstack@<nome>, che si controlla con
+#   sudo systemctl status devstack@recon-api
+#   sudo journalctl -u devstack@recon-scanner
+enable_service recon-api
+enable_service recon-scanner
+
+# Dove DevStack ha scaricato il repository ($DEST è di solito /opt/stack).
+RECON_DIR=${RECON_DIR:-$DEST/recon-stack}
+
+# File di configurazione, letto da oslo.config (recon_stack/conf.py).
+RECON_CONF_DIR=${RECON_CONF_DIR:-/etc/recon-stack}
+RECON_CONF=$RECON_CONF_DIR/recon-stack.conf
+
+# recon-api: uwsgi in ascolto diretto sulla porta 5238 (ADR 0008).
+RECON_API_PORT=${RECON_API_PORT:-5238}
+RECON_UWSGI=recon_stack.api.wsgi:application
+RECON_UWSGI_CONF=$RECON_CONF_DIR/recon-api-uwsgi.ini
+
+# Tipo del servizio nel catalogo di Keystone. Non è registrato presso
+# l'elenco ufficiale dei tipi OpenStack: è una scelta locale del progetto.
+RECON_SERVICE_TYPE=${RECON_SERVICE_TYPE:-recon}
