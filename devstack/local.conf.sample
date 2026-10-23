@@ -1,0 +1,27 @@
+# Esempio di local.conf per provare Recon-Stack in laboratorio.
+#
+# local.conf è il file con cui si dice a DevStack cosa installare. Va copiato
+# nella cartella di DevStack (di solito ~/devstack/local.conf) prima di
+# lanciare ./stack.sh.
+
+[[local|localrc]]
+# Password usate da DevStack per tutti i suoi componenti. Valgono solo per
+# questa installazione di laboratorio: vanno cambiate qui prima di stack.sh.
+ADMIN_PASSWORD=cambiami
+DATABASE_PASSWORD=$ADMIN_PASSWORD
+RABBIT_PASSWORD=$ADMIN_PASSWORD
+SERVICE_PASSWORD=$ADMIN_PASSWORD
+
+# Il plugin di questo progetto.
+enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
+
+# --- Solo per una VM su Mac con chip Apple M1/M2 (architettura ARM) ---------
+# L'M1 non permette la virtualizzazione annidata: le VM create da OpenStack
+# vengono emulate via software (qemu) invece che accelerate (kvm). DevStack
+# passerebbe a qemu da solo, ma il modello di CPU predefinito (Nehalem) è un
+# processore x86 e su ARM non esiste: va indicato un modello ARM.
+# L'immagine CirrOS per ARM (aarch64) viene scelta in automatico.
+# Valori da verificare sulla VM al primo stack.sh.
+LIBVIRT_TYPE=qemu
+LIBVIRT_CPU_MODE=custom
+LIBVIRT_CPU_MODEL=cortex-a57

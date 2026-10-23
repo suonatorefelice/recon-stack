@@ -71,7 +71,30 @@ Nel `local.conf` di DevStack:
 enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
 ```
 
-Dopo `./stack.sh` il servizio risponde su `http://<host>:5238`. Le istruzioni complete arriveranno con lo sviluppo: lo stato di avanzamento è in [docs/piano.md](docs/piano.md).
+Un `local.conf` completo, con le impostazioni per una VM su Mac con chip Apple M1, è in [devstack/local.conf.sample](devstack/local.conf.sample).
+
+Dopo `./stack.sh`:
+
+```console
+$ curl http://<host>:5238/health
+{"status":"ok"}
+$ sudo systemctl status devstack@recon-api devstack@recon-scanner
+$ openstack catalog list        # compare il servizio recon-stack, tipo recon
+```
+
+Le istruzioni complete arriveranno con lo sviluppo: lo stato di avanzamento è in [docs/piano.md](docs/piano.md).
+
+## Sviluppo in locale
+
+Il codice si sviluppa e si prova anche senza DevStack:
+
+```console
+$ python3 -m venv .venv
+$ .venv/bin/pip install -e . -r test-requirements.txt tox
+$ .venv/bin/tox -e py3                                            # test unitari
+$ .venv/bin/flask --app recon_stack.api.app:create_app run --port 5238
+$ .venv/bin/recon-stack-scanner                                   # Ctrl+C per fermarlo
+```
 
 ---
 
