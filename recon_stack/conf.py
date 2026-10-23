@@ -73,6 +73,15 @@ scanner_opts = [
              "(limite di frequenza, Step 5). Una richiesta che arriva prima "
              "viene rifiutata e registrata nel log. 0 disattiva il limite.",
     ),
+    cfg.StrOpt(
+        "network_driver",
+        default="ovn",
+        choices=["ovn", "ovs"],
+        help="Driver di rete di Neutron in uso sul nodo (ADR 0006): decide il "
+             "nome delle network namespace in cui la scansione entra. 'ovn' "
+             "(predefinito in DevStack recenti) usa ovnmeta-<id rete>; 'ovs' "
+             "usa qdhcp-<id rete>. Si verifica sul nodo con 'sudo ip netns list'.",
+    ),
 ]
 
 # Sezione [database] (ADR 0001).
