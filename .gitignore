@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.venv/
+*.db
+*.sqlite
+.env
+# generati da pbr durante l installazione
+*.egg-info/
+AUTHORS
+ChangeLog
+build/
+dist/
+# ambienti di test
+.tox/
+.pytest_cache/
+
+# IDE e file di sistema
+.idea/
+.DS_Store
