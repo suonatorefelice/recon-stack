@@ -101,7 +101,7 @@ $ openstack port list        --project recon-demo
 $ openstack floating ip list --project recon-demo
 ```
 
-### Eseguire una scansione (step 6)
+### Eseguire una scansione (step 6 e 7)
 
 Sempre sul nodo DevStack, dopo aver creato il progetto demo. La scansione entra
 nelle network namespace di Neutron, quindi va lanciata con `sudo`:
@@ -113,9 +113,75 @@ $ sudo recon-stack-scan --project recon-demo \
 
 Stampa gli host trovati divisi in **censiti** (le VM demo, con il loro nome),
 **sconosciuti** (rispondono ma senza porta Neutron) e **assenti** (hanno una
-porta ma non rispondono). I servizi sulle porte arrivano con lo step 7.
+porta ma non rispondono), con sotto ciascuno i **servizi** in ascolto (porta,
+protocollo, nome, prodotto, versione; es. `22/tcp ssh OpenSSH 8.9p1`).
 
-Le istruzioni complete arriveranno con lo sviluppo: lo stato di avanzamento è in [docs/piano.md](docs/piano.md).
+### Consultare i risultati: API e comandi (step 8)
+
+I risultati si leggono dalla API REST (serve un token admin) o, più comodamente,
+con i comandi `openstack recon`, che usano il token dell'utente collegato:
+
+```console
+$ openstack recon scan list                      # le scansioni, dalla più recente
+$ openstack recon host list --project recon-demo # gli host dell'ultima scansione
+$ openstack recon service list --name ssh        # cerca un servizio nel catalogo
+$ openstack recon host show <id-host>            # un host e i suoi servizi
+```
+
+Le stesse cose via API, ad esempio:
+
+```console
+$ curl -H "X-Auth-Token: $OS_TOKEN" http://<host>:5238/v1/services?name=ssh
+```
+
+### Dashboard (step 9)
+
+Il plugin installa anche i pannelli in Horizon: entra nella dashboard come admin
+e apri **Progetto → Recon** (host, servizi, scansioni). Il dettaglio di una
+scansione mostra anche il diff e le segnalazioni di esposizione.
+
+### Scansione periodica e diff (step 10)
+
+Lo scanner può eseguire da solo le scansioni richieste via API e ripeterle a
+intervalli. Nel file `/etc/recon-stack/recon-stack.conf`, sezione `[scanner]`:
+
+```ini
+periodic_scan_interval = 3600        # ogni ora
+periodic_projects = recon-demo
+```
+
+Il confronto fra una scansione e la precedente (host e servizi comparsi o
+spariti) si vede con `openstack recon scan diff <id-scansione>`: avviando o
+fermando un servizio su una VM demo, il diff lo mostra.
+
+### Esposizione (step 11)
+
+Il confronto fra i servizi trovati e i security group produce delle
+**segnalazioni** (regola inutile, servizio latente, esposizione eccessiva, host
+non censito, floating IP inutile). Il progetto demo contiene regole volutamente
+sbagliate, che devono comparire qui:
+
+```console
+$ openstack recon scan exposure <id-scansione>
+$ openstack recon scan exposure <id-scansione> --severity high
+```
+
+### Report e mappa (step 12)
+
+Da una scansione già fatta si genera un report HTML con la mappa della topologia,
+più una versione **condivisibile** con indirizzi e nomi oscurati:
+
+```console
+$ recon-stack-report --project recon-demo --output /tmp/report \
+    --config-file /etc/recon-stack/recon-stack.conf
+$ recon-stack-report --project recon-demo --output /tmp/report --redacted
+```
+
+Apri `/tmp/report/report.html` nel browser (e stampalo su PDF da lì, oppure usa
+`--pdf` se è installato weasyprint). La mappa compare se è installato Graphviz
+(`dot`), che il plugin DevStack installa da sé.
+
+Lo stato di avanzamento degli step è in [docs/piano.md](docs/piano.md).
 
 ## Sviluppo in locale
 
@@ -128,6 +194,10 @@ $ .venv/bin/tox -e py3                                            # test unitari
 $ .venv/bin/flask --app recon_stack.api.app:create_app run --port 5238
 $ .venv/bin/recon-stack-scanner                                   # Ctrl+C per fermarlo
 ```
+
+I test unitari (`tox -e py3`) girano senza OpenStack. Il percorso completo su un
+DevStack vero si prova invece con i test tempest in
+[recon_stack/tests/tempest](recon_stack/tests/tempest/README.md).
 
 ---
 

@@ -22,12 +22,14 @@ class ReconTempestPlugin(plugins.TempestPlugin):
     """Registra i test e le opzioni di Recon-Stack dentro tempest."""
 
     def load_tests(self):
-        # Diciamo a tempest in quale cartella cercare i nostri test e qual è la
-        # radice del pacchetto, come fanno tutti i plugin tempest.
-        base_path = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
-        base_path = os.path.split(base_path)[0]
-        test_dir = "recon_stack/tests/tempest/tests"
-        full_test_dir = os.path.join(base_path, test_dir)
+        # Diciamo a tempest dove cercare i nostri test (full_test_dir) e qual è
+        # la radice da cui importarli (base_path, la cartella del repository, da
+        # cui "recon_stack.tests.tempest.tests..." è importabile). Questo file è
+        # in <repo>/recon_stack/tests/tempest/plugin.py: la radice è tre livelli
+        # sopra la sua cartella.
+        here = os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.abspath(os.path.join(here, "..", "..", ".."))
+        full_test_dir = os.path.join(here, "tests")
         return full_test_dir, base_path
 
     def register_opts(self, conf):
