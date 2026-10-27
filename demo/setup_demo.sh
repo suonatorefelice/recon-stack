@@ -7,7 +7,8 @@
 #   - un utente "recon-demo-user" (ruolo member nel progetto);
 #   - una rete privata con una subnet (10.10.10.0/24);
 #   - un router che collega la rete privata alla rete esterna "public";
-#   - un security group che apre SSH e il ping;
+#   - un security group che apre SSH e il ping, più due regole volutamente
+#     sbagliate (porte aperte senza servizio dietro) per provare lo step 11;
 #   - due VM (immagine cirros, la mini-immagine di prova di DevStack);
 #   - un floating IP associato alla prima VM.
 #
@@ -67,14 +68,27 @@ openstack router create --or-show --project "$PROJECT" "$ROUTER" >/dev/null
 openstack router set --external-gateway "$EXTERNAL_NET" "$ROUTER" || true
 openstack router add subnet "$ROUTER" "$SUBNET" 2>/dev/null || true
 
-echo "== 4/6 security group (SSH e ping) =="
+echo "== 4/6 security group (SSH e ping, più due regole volutamente sbagliate) =="
 openstack security group create --or-show --project "$PROJECT" "$SECGROUP" >/dev/null
 # Regole in ingresso: TCP 22 (SSH) e ICMP (ping) da qualunque indirizzo.
 # "|| true" perché ricreare una regola uguale dà errore.
+# La 22 da 0.0.0.0/0 è una vera esposizione: cirros ha SSH in ascolto, quindi
+# lo step 11 la segnala come "esposizione eccessiva".
 openstack security group rule create --project "$PROJECT" \
   --proto tcp --dst-port 22 "$SECGROUP" >/dev/null 2>&1 || true
 openstack security group rule create --project "$PROJECT" \
   --proto icmp "$SECGROUP" >/dev/null 2>&1 || true
+
+# Due regole SBAGLIATE DI PROPOSITO, per far vedere lo step 11 al lavoro:
+#   - TCP 3306 (MySQL) da qualunque indirizzo: su cirros non c'è nessun MySQL in
+#     ascolto, quindi è una "regola inutile" (apre una porta senza servizio);
+#   - TCP 8080 da qualunque indirizzo: anche questa senza servizio dietro.
+# Non sono errori dello script: servono alla verifica ("le regole volutamente
+# sbagliate del progetto demo vengono segnalate", docs/piano.md step 11).
+openstack security group rule create --project "$PROJECT" \
+  --proto tcp --dst-port 3306 "$SECGROUP" >/dev/null 2>&1 || true
+openstack security group rule create --project "$PROJECT" \
+  --proto tcp --dst-port 8080 "$SECGROUP" >/dev/null 2>&1 || true
 
 # --- Da qui creiamo le VM come l'utente demo, nel progetto demo --------------
 # "openstack server create" crea la VM nel progetto con cui ci si autentica:

@@ -40,6 +40,7 @@ interrogabile via dashboard e API REST, con scoperta periodica e storico dei cam
 - 0008 Flask + uwsgi in ascolto diretto sulla porta 5238, servizio `recon` nel catalogo Keystone
 - 0009 Plugin DevStack `recon-stack` con fasi install, post-config, extra, unstack, clean
 - 0010 Dashboard come plugin di Horizon (pannelli Django che chiamano la API /v1); recon-api resta solo API REST
+- 0011 Esposizione: vista esterna dei floating IP (dalla namespace radice) e segnalazioni salvate, dal confronto fra servizi e security group
 
 ## Stack tecnico
 Python, Flask, APScheduler, openstacksdk (cloud "devstack-admin" da

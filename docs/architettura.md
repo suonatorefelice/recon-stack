@@ -50,8 +50,10 @@ sequenceDiagram
 
     S->>D: trova la richiesta PENDING, la porta a RUNNING
     S->>O: inventario e perimetro del progetto
-    S->>S: host discovery e service discovery nel perimetro
-    S->>D: risultati, diff con la scansione precedente, stato DONE
+    S->>S: host e service discovery nel perimetro (vista interna)
+    S->>S: service discovery sui floating IP (vista esterna)
+    S->>S: confronto servizi/security group: segnalazioni di esposizione
+    S->>D: risultati, segnalazioni, diff con la precedente, stato DONE
 
     C->>A: GET /v1/scans/{id}
     A->>D: legge
@@ -70,6 +72,7 @@ Stati di una scansione: `PENDING` (richiesta registrata), `RUNNING` (in corso), 
 | `hosts` | gli host visti in una scansione: IP, rete, VM associata se c'è, classificazione (censito, sconosciuto, assente) |
 | `services` | i servizi visti su un host in una scansione: porta, protocollo, nome, prodotto, versione, vista (interna o esterna) |
 | `inventory_*` | la fotografia dell'inventario usata dalla scansione: VM, porte Neutron, floating IP, security group e regole |
+| `exposure_findings` | le segnalazioni di esposizione di una scansione: tipo, gravità, indirizzo e porta, e la spiegazione in italiano (regola inutile, servizio latente, esposizione eccessiva, host non censito, floating IP inutile) |
 
 Ogni scansione conserva i propri risultati: il catalogo è l'ultima scansione completata, lo storico sono le precedenti, il diff è il confronto fra due scansioni dello stesso progetto.
 
@@ -89,3 +92,4 @@ Il servizio si installa come plugin DevStack ([0009](adr/0009-plugin-devstack.md
 
 - Il driver di rete in uso (OVN od OVS) e quindi i nomi delle namespace ([0006](adr/0006-vista-interna-namespace.md)).
 - Come i security group delle VM trattano il traffico della vista interna: decide cosa la scansione può vedere, e quindi come si riconosce un servizio latente.
+- Che il nodo DevStack raggiunga la rete `public` dalla namespace radice: è ciò che rende possibile la vista esterna sui floating IP ([0011](adr/0011-esposizione-e-segnalazioni.md)).
