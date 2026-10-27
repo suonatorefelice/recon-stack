@@ -10,3 +10,4 @@ keystonemiddleware>=10.0.0  # valida i token Keystone davanti alla API (ADR 0002
 oslo.privsep>=2.6.0  # confina in un demone le operazioni privilegiate (host discovery nei namespace, ADR 0007)
 oslo.concurrency>=5.0.0  # esecuzione di comandi esterni (nmap) in modo sicuro (processutils)
 osc-lib>=2.3.0       # base per i comandi "openstack recon ..." (plugin dell'OpenStackClient, Step 8)
+Jinja2>=3.1.0        # template del report HTML (Step 12); arriva già con Flask, la dichiariamo perché la usiamo direttamente
