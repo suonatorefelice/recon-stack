@@ -1,0 +1,7 @@
+{% extends "horizon/common/_modal_form.html" %}
+{% load i18n %}
+
+{% block modal-body-right %}
+  <h3>{% trans "Avvia una scansione" %}</h3>
+  <p>{% trans "Inserisci l'id del progetto da scansionare. L'operazione richiede il ruolo admin ed è soggetta al limite di frequenza." %}</p>
+{% endblock %}

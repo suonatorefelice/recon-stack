@@ -99,6 +99,29 @@ function create_recon_stack_accounts {
     configure_keystone_authtoken_middleware $RECON_CONF recon-stack
 }
 
+# --- stack post-config: dashboard Horizon (ADR 0010) -------------------------
+
+function install_recon_dashboard {
+    # Aggiunge i nostri pannelli a Horizon, solo se Horizon è attivo qui.
+    is_service_enabled horizon || return 0
+    echo_summary "Installazione del plugin Horizon di Recon-Stack"
+
+    # Horizon carica i file "enabled" dalla sua cartella local/enabled: ci
+    # copiamo i nostri (settings registra la cartella sorgente).
+    local dst="$HORIZON_DIR/openstack_dashboard/local/enabled"
+    cp $RECON_DASHBOARD_ENABLED_SRC/_*.py "$dst/"
+
+    # Raccoglie i file statici e riavvia Horizon, così i pannelli compaiono.
+    python "$HORIZON_DIR/manage.py" collectstatic --noinput >/dev/null 2>&1 || true
+    python "$HORIZON_DIR/manage.py" compress --force >/dev/null 2>&1 || true
+    restart_apache_server
+}
+
+function cleanup_recon_dashboard {
+    is_service_enabled horizon || return 0
+    sudo rm -f "$HORIZON_DIR/openstack_dashboard/local/enabled"/_5000_recon.py
+}
+
 # --- stack extra: avvio dei processi -----------------------------------------
 
 function start_recon_stack {
@@ -126,6 +149,8 @@ function cleanup_recon_stack {
     sudo rm -rf $RECON_CONF_DIR $RECON_DATA_DIR
     # E la regola sudo del demone di privsep.
     sudo rm -f /etc/sudoers.d/recon-stack-privsep
+    # E i file "enabled" aggiunti a Horizon (ADR 0010).
+    cleanup_recon_dashboard
 }
 
 # --- smistamento: cosa fare in ogni momento ----------------------------------
@@ -141,6 +166,7 @@ if is_service_enabled recon-api recon-scanner; then
         configure_recon_stack
         init_recon_stack
         create_recon_stack_accounts
+        install_recon_dashboard
 
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         echo_summary "Avvio di Recon-Stack"

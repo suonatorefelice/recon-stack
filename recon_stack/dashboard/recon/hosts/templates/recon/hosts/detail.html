@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% blocktrans with ip=host.ip_address %}Host {{ ip }}{% endblocktrans %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=host.ip_address %}
+{% endblock %}
+
+{% block main %}
+  <dl class="dl-horizontal">
+    <dt>{% trans "Indirizzo IP" %}</dt><dd>{{ host.ip_address }}</dd>
+    <dt>{% trans "Classificazione" %}</dt><dd>{{ host.classification }}</dd>
+    <dt>{% trans "VM" %}</dt><dd>{{ host.server_name|default:"—" }}</dd>
+    <dt>{% trans "Rete" %}</dt><dd>{{ host.network_id|default:"—" }}</dd>
+    <dt>{% trans "Porta Neutron" %}</dt><dd>{{ host.neutron_port_id|default:"—" }}</dd>
+  </dl>
+
+  <h3>{% trans "Servizi" %}</h3>
+  {# Tabella dei servizi trovati su questo host (dati dalla vista). #}
+  {{ table.render }}
+{% endblock %}

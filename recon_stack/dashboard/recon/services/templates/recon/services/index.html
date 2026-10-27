@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Servizi" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Servizi") %}
+{% endblock %}
+
+{% block main %}
+  {# Ricerca per nome del servizio: invia ?name=... alla stessa pagina. #}
+  <form method="get" class="form-inline" style="margin-bottom: 1em;">
+    <input type="text" name="name" value="{{ search_name }}"
+           class="form-control" placeholder="{% trans 'nome servizio, es. ssh' %}">
+    <button type="submit" class="btn btn-default">{% trans "Cerca" %}</button>
+  </form>
+
+  {{ table.render }}
+{% endblock %}

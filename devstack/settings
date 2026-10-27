@@ -36,3 +36,8 @@ RECON_UWSGI_CONF=$RECON_CONF_DIR/recon-api-uwsgi.ini
 # Tipo del servizio nel catalogo di Keystone. Non è registrato presso
 # l'elenco ufficiale dei tipi OpenStack: è una scelta locale del progetto.
 RECON_SERVICE_TYPE=${RECON_SERVICE_TYPE:-recon}
+
+# Dashboard: i pannelli Horizon (ADR 0010). I file "enabled" del plugin stanno
+# qui e vengono copiati nella cartella di Horizon durante stack (plugin.sh). Si
+# installano solo se Horizon è abilitato su questo DevStack.
+RECON_DASHBOARD_ENABLED_SRC=$RECON_DIR/recon_stack/dashboard/enabled

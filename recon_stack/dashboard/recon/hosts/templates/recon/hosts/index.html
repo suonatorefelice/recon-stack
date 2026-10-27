@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Host" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Host") %}
+{% endblock %}
+
+{% block main %}
+  {# La tabella la disegna Horizon dai dati della vista (DataTableView). #}
+  {{ table.render }}
+{% endblock %}

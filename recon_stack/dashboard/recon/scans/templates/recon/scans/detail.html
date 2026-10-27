@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Dettaglio scansione" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Dettaglio scansione") %}
+{% endblock %}
+
+{% block main %}
+  {% if scan %}
+  <dl class="dl-horizontal">
+    <dt>{% trans "ID" %}</dt><dd>{{ scan.id }}</dd>
+    <dt>{% trans "Progetto" %}</dt><dd>{{ scan.project_id }}</dd>
+    <dt>{% trans "Stato" %}</dt><dd>{{ scan.status }}</dd>
+    <dt>{% trans "Origine" %}</dt><dd>{{ scan.trigger }}</dd>
+    <dt>{% trans "Richiesta da" %}</dt><dd>{{ scan.requested_by_user|default:"—" }}</dd>
+    <dt>{% trans "Creata" %}</dt><dd>{{ scan.created_at|default:"—" }}</dd>
+    <dt>{% trans "Avviata" %}</dt><dd>{{ scan.started_at|default:"—" }}</dd>
+    <dt>{% trans "Conclusa" %}</dt><dd>{{ scan.finished_at|default:"—" }}</dd>
+    <dt>{% trans "Motivo" %}</dt><dd>{{ scan.fault|default:"—" }}</dd>
+  </dl>
+  {% else %}
+  <p>{% trans "Scansione non trovata." %}</p>
+  {% endif %}
+{% endblock %}
