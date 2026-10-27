@@ -243,25 +243,27 @@ def get_services(scan_id=None, host_id=None, name=None):
 
 # --- Inventario --------------------------------------------------------------
 
-def save_inventory(servers, ports, floating_ips):
+def save_inventory(servers, ports, floating_ips, security_groups=(), rules=()):
     """Salva la fotografia dell'inventario di una scansione.
 
-    Riceve liste di oggetti InventoryServer, InventoryPort e
-    InventoryFloatingIp già pronti (li costruisce scanner/inventory.py) e li
-    scrive tutti insieme: o entra tutta la fotografia, o nessun pezzo (il
-    commit/rollback di session_scope).
+    Riceve liste di oggetti InventoryServer, InventoryPort, InventoryFloatingIp
+    e, dallo step 11, InventorySecurityGroup e InventorySecurityGroupRule (li
+    costruisce scanner/inventory.py) e li scrive tutti insieme: o entra tutta la
+    fotografia, o nessun pezzo (il commit/rollback di session_scope).
     """
     with session_scope() as session:
         session.add_all(servers)
         session.add_all(ports)
         session.add_all(floating_ips)
+        session.add_all(security_groups)
+        session.add_all(rules)
 
 
 def get_inventory(scan_id):
     """Restituisce l'inventario salvato per una scansione.
 
-    Torna un dizionario con le tre liste: comodo per i test e, più avanti, per
-    chi deve classificare gli host a partire dalle porte.
+    Torna un dizionario con le liste dell'inventario: comodo per i test e per
+    chi deve classificare gli host o confrontare i servizi con le regole.
     """
     with session_scope() as session:
         return {
@@ -274,4 +276,10 @@ def get_inventory(scan_id):
             "floating_ips": list(session.scalars(
                 sqlalchemy.select(models.InventoryFloatingIp)
                 .where(models.InventoryFloatingIp.scan_id == scan_id))),
+            "security_groups": list(session.scalars(
+                sqlalchemy.select(models.InventorySecurityGroup)
+                .where(models.InventorySecurityGroup.scan_id == scan_id))),
+            "security_group_rules": list(session.scalars(
+                sqlalchemy.select(models.InventorySecurityGroupRule)
+                .where(models.InventorySecurityGroupRule.scan_id == scan_id))),
         }

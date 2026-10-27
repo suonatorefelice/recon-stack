@@ -61,6 +61,10 @@ HOST_ABSENT = "absent"    # host assente: ha una porta Neutron ma non risponde
 VIEW_INTERNAL = "internal"  # vista interna, dalla rete del progetto
 VIEW_EXTERNAL = "external"  # vista esterna, sui floating IP
 
+# Direzione di una regola di security group (come la chiama Neutron).
+DIRECTION_INGRESS = "ingress"  # traffico in entrata verso la VM
+DIRECTION_EGRESS = "egress"    # traffico in uscita dalla VM
+
 
 class Scan(Base):
     """Una scansione di un progetto: è anche la riga di log richiesta dai vincoli.
@@ -99,6 +103,10 @@ class Scan(Base):
     ports: Mapped[list["InventoryPort"]] = relationship(
         back_populates="scan", cascade="all, delete-orphan")
     floating_ips: Mapped[list["InventoryFloatingIp"]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan")
+    security_groups: Mapped[list["InventorySecurityGroup"]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan")
+    security_group_rules: Mapped[list["InventorySecurityGroupRule"]] = relationship(
         back_populates="scan", cascade="all, delete-orphan")
 
 
@@ -193,6 +201,11 @@ class InventoryPort(Base):
     device_owner: Mapped[str | None] = mapped_column(String(64))
     # Risorsa a cui la porta è attaccata: per una VM è l'id del server Nova.
     device_id: Mapped[str | None] = mapped_column(String(255))
+    # I security group applicati a questa porta, come lista JSON di id (step 11):
+    # servono a collegare una porta (e quindi un host) alle sue regole, per
+    # confrontare i servizi trovati con ciò che le regole permettono. Testo JSON
+    # perché una porta può avere più security group e SQLite non ha un tipo lista.
+    security_group_ids: Mapped[str | None] = mapped_column(Text)
 
     scan: Mapped[Scan] = relationship(back_populates="ports")
 
@@ -212,3 +225,56 @@ class InventoryFloatingIp(Base):
     port_id: Mapped[str | None] = mapped_column(String(36))
 
     scan: Mapped[Scan] = relationship(back_populates="floating_ips")
+
+
+class InventorySecurityGroup(Base):
+    """Un security group del progetto, come letto all'inizio della scansione.
+
+    Un security group è un gruppo di regole di firewall che Neutron applica alle
+    porte (e quindi alle VM). Qui salviamo solo l'anagrafica del gruppo (id e
+    nome); le singole regole stanno in InventorySecurityGroupRule.
+    """
+
+    __tablename__ = "inventory_security_groups"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id"), index=True)
+    # id del security group in Neutron (lo stesso di "openstack security group list").
+    security_group_id: Mapped[str] = mapped_column(String(36), index=True)
+    name: Mapped[str | None] = mapped_column(String(255))
+
+    scan: Mapped[Scan] = relationship(back_populates="security_groups")
+
+
+class InventorySecurityGroupRule(Base):
+    """Una regola di un security group: cosa lascia passare e da dove.
+
+    Confrontando queste regole con i servizi davvero in ascolto (step 11) si
+    trovano le incongruenze: una porta aperta da una regola ma senza servizio
+    (regola inutile), un servizio attivo che nessuna regola prevede (servizio
+    latente), una regola che apre una porta a qualunque indirizzo (esposizione
+    eccessiva).
+    """
+
+    __tablename__ = "inventory_sg_rules"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id"), index=True)
+    rule_id: Mapped[str] = mapped_column(String(36), index=True)
+    # A quale security group appartiene la regola.
+    security_group_id: Mapped[str] = mapped_column(String(36), index=True)
+    direction: Mapped[str] = mapped_column(String(16))  # ingress o egress
+    # Famiglia di indirizzi: IPv4 o IPv6.
+    ethertype: Mapped[str | None] = mapped_column(String(16))
+    # Protocollo (tcp, udp, icmp, ...). None vuol dire "qualunque protocollo".
+    protocol: Mapped[str | None] = mapped_column(String(16))
+    # Intervallo di porte permesse: da port_range_min a port_range_max inclusi.
+    # Entrambi None vuol dire "tutte le porte" (tipico di una regola senza porta).
+    port_range_min: Mapped[int | None]
+    port_range_max: Mapped[int | None]
+    # Da quali indirizzi è permesso il traffico: un CIDR (es. 0.0.0.0/0 = tutti)
+    # oppure, in alternativa, un altro security group (remote_group_id).
+    remote_ip_prefix: Mapped[str | None] = mapped_column(String(64))
+    remote_group_id: Mapped[str | None] = mapped_column(String(36))
+
+    scan: Mapped[Scan] = relationship(back_populates="security_group_rules")

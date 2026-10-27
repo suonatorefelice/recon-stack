@@ -55,7 +55,7 @@ def main(argv=None):
 
     scan = api.create_scan(project_id, models.TRIGGER_MANUAL,
                            status=models.SCAN_RUNNING)
-    servers, ports, floating_ips = inventory.collect_and_save(
+    servers, ports, floating_ips, security_groups, rules = inventory.collect_and_save(
         conn, project_id, scan.id)
 
     print(f"Inventario del progetto {project.name} ({project_id}),"
@@ -69,6 +69,9 @@ def main(argv=None):
     print(f"  floating IP:  {len(floating_ips)}")
     for f in floating_ips:
         print(f"    - {f.floating_ip_address} -> {f.fixed_ip_address or 'n/d'}")
+    print(f"  security group: {len(security_groups)} ({len(rules)} regole)")
+    for sg in security_groups:
+        print(f"    - {sg.name} {sg.security_group_id}")
     return 0
 
 

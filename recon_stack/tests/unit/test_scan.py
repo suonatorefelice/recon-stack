@@ -46,10 +46,13 @@ class _Compute:
 
 
 class _Network:
-    def __init__(self, subnets, ports, floating_ips):
+    def __init__(self, subnets, ports, floating_ips,
+                 security_groups=(), security_group_rules=()):
         self._subnets = subnets
         self._ports = ports
         self._floating_ips = floating_ips
+        self._security_groups = security_groups
+        self._security_group_rules = security_group_rules
 
     def subnets(self, project_id=None):
         return list(self._subnets)
@@ -59,6 +62,12 @@ class _Network:
 
     def ips(self, project_id=None):
         return list(self._floating_ips)
+
+    def security_groups(self, project_id=None):
+        return list(self._security_groups)
+
+    def security_group_rules(self, project_id=None):
+        return list(self._security_group_rules)
 
 
 class _Identity:

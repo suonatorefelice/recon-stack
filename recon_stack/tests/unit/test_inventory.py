@@ -45,15 +45,24 @@ class _Compute:
 
 
 class _Network:
-    def __init__(self, ports, floating_ips):
+    def __init__(self, ports, floating_ips, security_groups=(),
+                 security_group_rules=()):
         self._ports = ports
         self._floating_ips = floating_ips
+        self._security_groups = security_groups
+        self._security_group_rules = security_group_rules
 
     def ports(self, project_id=None):
         return list(self._ports)
 
     def ips(self, project_id=None):
         return list(self._floating_ips)
+
+    def security_groups(self, project_id=None):
+        return list(self._security_groups)
+
+    def security_group_rules(self, project_id=None):
+        return list(self._security_group_rules)
 
 
 class _Identity:
@@ -65,9 +74,11 @@ class _Identity:
 
 
 class FakeConnection:
-    def __init__(self, servers=(), ports=(), floating_ips=(), project=None):
+    def __init__(self, servers=(), ports=(), floating_ips=(),
+                 security_groups=(), security_group_rules=(), project=None):
         self.compute = _Compute(servers)
-        self.network = _Network(ports, floating_ips)
+        self.network = _Network(ports, floating_ips, security_groups,
+                                security_group_rules)
         # Per il comando recon-stack-inventory, che risolve il progetto.
         self.identity = _Identity(
             project or _obj(id="progetto-1", name="recon-demo"))
@@ -116,6 +127,51 @@ def test_colleziona_vm_porte_e_floating_ip(db):
     assert saved["floating_ips"][0].fixed_ip_address == "10.0.0.5"
 
 
+def test_colleziona_security_group_e_regole(db):
+    scan = api.create_scan("progetto-1", "manual")
+    conn = FakeConnection(
+        ports=[
+            # La porta della VM riporta i suoi security group.
+            _obj(id="port-vm", network_id="net-1",
+                 mac_address="fa:16:3e:00:00:01",
+                 device_owner="compute:nova", device_id="vm-1",
+                 security_group_ids=["sg-1"],
+                 fixed_ips=[{"ip_address": "10.0.0.5", "subnet_id": "sub-1"}]),
+        ],
+        security_groups=[_obj(id="sg-1", name="recon-demo-sg")],
+        security_group_rules=[
+            # Regola in ingresso: TCP 22 da qualunque indirizzo.
+            _obj(id="rule-ssh", security_group_id="sg-1", direction="ingress",
+                 ether_type="IPv4", protocol="tcp", port_range_min=22,
+                 port_range_max=22, remote_ip_prefix="0.0.0.0/0",
+                 remote_group_id=None),
+            # Regola senza porte né protocollo (uscita libera verso tutto).
+            _obj(id="rule-egress", security_group_id="sg-1", direction="egress",
+                 ether_type="IPv4", protocol=None, port_range_min=None,
+                 port_range_max=None, remote_ip_prefix=None, remote_group_id=None),
+        ],
+    )
+
+    inventory.collect_and_save(conn, "progetto-1", scan.id)
+
+    saved = api.get_inventory(scan.id)
+    assert len(saved["security_groups"]) == 1
+    assert saved["security_groups"][0].name == "recon-demo-sg"
+
+    rules = {r.rule_id: r for r in saved["security_group_rules"]}
+    assert len(rules) == 2
+    ssh = rules["rule-ssh"]
+    assert ssh.direction == "ingress"
+    assert ssh.protocol == "tcp"
+    assert ssh.port_range_min == 22 and ssh.port_range_max == 22
+    assert ssh.remote_ip_prefix == "0.0.0.0/0"
+    assert ssh.ethertype == "IPv4"
+    # La porta conserva i suoi security group come lista JSON.
+    import json
+    vm_port = next(p for p in saved["ports"] if p.port_id == "port-vm")
+    assert json.loads(vm_port.security_group_ids) == ["sg-1"]
+
+
 def test_una_porta_con_piu_ip_diventa_piu_righe(db):
     scan = api.create_scan("progetto-1", "manual")
     conn = FakeConnection(ports=[
@@ -139,7 +195,8 @@ def test_inventario_vuoto(db):
     scan = api.create_scan("progetto-1", "manual")
     inventory.collect_and_save(FakeConnection(), "progetto-1", scan.id)
     saved = api.get_inventory(scan.id)
-    assert saved == {"servers": [], "ports": [], "floating_ips": []}
+    assert saved == {"servers": [], "ports": [], "floating_ips": [],
+                     "security_groups": [], "security_group_rules": []}
 
 
 def test_comando_inventory_crea_una_scansione_e_salva(db, monkeypatch, capsys):

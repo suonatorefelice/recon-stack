@@ -46,8 +46,8 @@ def run_scan(conn, scan_id):
         perimeter = perimeter_mod.build(conn, project_id)
         db.update_scan(scan_id, perimeter=json.dumps(perimeter.as_dict()))
 
-        # 3. Inventario del progetto (VM, porte, floating IP).
-        servers, ports, _floating = inventory.collect_and_save(
+        # 3. Inventario del progetto (VM, porte, floating IP, security group).
+        servers, ports, _floating, _sgs, _rules = inventory.collect_and_save(
             conn, project_id, scan_id)
         servers_by_id = {s.server_id: s.name for s in servers}
 
