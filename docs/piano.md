@@ -12,7 +12,7 @@ Il progetto procede per step. Uno step è chiuso solo quando la sua **verifica**
 | 6 | **Privsep e host discovery**: funzione privilegiata dichiarata con oslo.privsep, classificazione degli host | sul progetto demo le VM risultano censite e una porta creata senza VM risulta sconosciuta |
 | 7 | **Service discovery** con `nmap -sV` | sulle VM demo vengono trovati i servizi e le versioni attese |
 | 8 | **API REST** `/v1/hosts`, `/v1/services`, `/v1/scans`, più i comandi `openstack recon ...` | test con il client di test di Flask e con `curl` su DevStack |
-| 9 | **Dashboard** con Jinja2: elenco host, dettaglio, servizi con filtri, storico | le ricerche dalla dashboard danno gli stessi risultati della API |
+| 9 | **Dashboard**: plugin di Horizon (pannelli Django che chiamano la API `/v1`, ADR 0010) — elenco host, dettaglio, servizi con filtri, storico | i pannelli Horizon mostrano gli stessi risultati della API |
 | 10 | **Scansione periodica, diff e storico** | avviando e fermando un servizio su una VM demo, il diff mostra la comparsa e la scomparsa |
 | 11 | **Esposizione**: vista esterna dei floating IP, confronto con i security group (servizi latenti, regole inutili) | le regole volutamente sbagliate del progetto demo vengono segnalate |
 | 12 | **Mappa e report**: topologia con Graphviz, report HTML/PDF, versione con redaction | il report del progetto demo è completo; la versione con redaction non contiene IP né identificativi reali |

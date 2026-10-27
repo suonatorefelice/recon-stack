@@ -6,14 +6,17 @@ Chi fa cosa, dove passano i confini e in che ordine avvengono le cose. Le scelte
 
 | Componente | Responsabilità | Non fa |
 | --- | --- | --- |
-| `recon-api` | riceve le richieste HTTP sulla porta 5238, verifica il token con Keystone, serve la API REST `/v1` e la dashboard, registra le richieste di scansione e il log dei tentativi | non esegue scansioni, non ha privilegi ([0004](adr/0004-scheduler-separato.md), [0007](adr/0007-privilegi-oslo-privsep.md)) |
+| `recon-api` | riceve le richieste HTTP sulla porta 5238, verifica il token con Keystone, serve la API REST `/v1`, registra le richieste di scansione e il log dei tentativi | non esegue scansioni, non ha privilegi, non serve HTML ([0004](adr/0004-scheduler-separato.md), [0007](adr/0007-privilegi-oslo-privsep.md)) |
+| plugin Horizon | la dashboard web: pannelli Django aggiunti a Horizon che chiamano la API `/v1` col token dell'utente ([0010](adr/0010-dashboard-plugin-horizon.md)) | non legge il database né OpenStack: passa sempre dalla API |
 | `recon-scanner` | esegue le scansioni periodiche e quelle richieste: legge l'inventario, calcola il perimetro, scopre host e servizi, riconcilia e salva | non riceve richieste HTTP, non ha privilegi propri |
 | demone privsep | esegue, su richiesta di `recon-scanner`, le sole funzioni dichiarate come privilegiate | non accetta comandi arbitrari ([0007](adr/0007-privilegi-oslo-privsep.md)) |
 | database SQLite | inventario, risultati, storico, richieste e log delle scansioni | non è la verità sulle risorse: lo è OpenStack ([0001](adr/0001-database-sqlite.md)) |
 
 ```mermaid
 flowchart LR
-    U[Utente o admin] -- "token Keystone" --> A[recon-api :5238]
+    U[Utente o admin] -- "browser" --> H[Horizon + plugin recon]
+    H -- "token Keystone,<br/>chiama /v1" --> A[recon-api :5238]
+    U -- "token Keystone<br/>CLI o curl" --> A
     A -- "valida il token" --> K[Keystone]
     A -- "legge risultati,<br/>scrive richieste e log" --> D[(SQLite)]
     S[recon-scanner] -- "legge richieste,<br/>scrive risultati" --> D

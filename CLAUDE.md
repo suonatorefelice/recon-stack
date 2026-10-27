@@ -39,22 +39,25 @@ interrogabile via dashboard e API REST, con scoperta periodica e storico dei cam
 - 0007 Operazioni privilegiate solo tramite oslo.privsep; API e scheduler senza privilegi
 - 0008 Flask + uwsgi in ascolto diretto sulla porta 5238, servizio `recon` nel catalogo Keystone
 - 0009 Plugin DevStack `recon-stack` con fasi install, post-config, extra, unstack, clean
+- 0010 Dashboard come plugin di Horizon (pannelli Django che chiamano la API /v1); recon-api resta solo API REST
 
 ## Stack tecnico
 Python, Flask, APScheduler, openstacksdk (cloud "devstack-admin" da
 /etc/openstack/clouds.yaml), python-nmap, SQLAlchemy + alembic, oslo.config,
-keystonemiddleware, oslo.privsep, uwsgi, Graphviz, Jinja2. Porta interfaccia: 5238.
+keystonemiddleware, oslo.privsep, uwsgi, osc-lib (comandi `openstack recon`),
+Horizon/Django (plugin della dashboard), Graphviz. Porta interfaccia: 5238.
 
 ## Struttura repo
 ```
 devstack/{settings,plugin.sh}     plugin DevStack
 recon_stack/                      pacchetto Python del servizio
-  api/        app Flask, API REST /v1, dashboard
+  api/        app Flask, API REST /v1
   scanner/    inventario, perimetro, discovery, riconciliazione, scheduler
   privsep/    le sole funzioni eseguite con privilegi (oslo.privsep)
   db/         modelli, accesso ai dati, migrazioni alembic (SQLite)
+  osc/        comandi `openstack recon ...` (plugin OpenStackClient)
+  dashboard/  plugin Horizon: pannelli Django + file "enabled" + template
   report/     mappa Graphviz e report
-  templates/  pagine Jinja2
   tests/      unit/ (tox, senza OpenStack) e tempest/ (su DevStack)
 etc/                              configurazione di esempio
 demo/setup_demo.sh                crea un progetto demo da scansionare
@@ -65,9 +68,10 @@ README.md GLOSSARY.md setup.cfg setup.py requirements.txt tox.ini
 ## Plugin DevStack
 - install: setup_develop del pacchetto, install_package nmap graphviz
 - post-config: file di configurazione, database e migrazioni, utente di servizio,
-  servizio ed endpoint in Keystone
+  servizio ed endpoint in Keystone; installa i file "enabled" del plugin Horizon
+  nella dashboard (ADR 0010) e la riavvia
 - extra: run_process recon-api (uwsgi :5238) e recon-scanner
-- unstack: stop_process; clean: rimozione configurazione
+- unstack: stop_process; clean: rimozione configurazione e file "enabled" di Horizon
 - Attivazione: enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
 
 ## Note tecniche

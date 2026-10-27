@@ -12,8 +12,8 @@
 | --- | --- |
 | **Tipo** | nuovo servizio OpenStack, installato come plugin DevStack |
 | **Linguaggio** | Python |
-| **Componenti integrati** | Keystone (autenticazione), Nova e Neutron (sola lettura) |
-| **Interfacce** | API REST e dashboard sulla porta 5238, comandi `openstack recon` |
+| **Componenti integrati** | Keystone (autenticazione), Nova e Neutron (sola lettura), Horizon (dashboard) |
+| **Interfacce** | API REST sulla porta 5238, comandi `openstack recon`, dashboard come plugin di Horizon |
 | **Strumenti** | nmap, Graphviz |
 
 ---

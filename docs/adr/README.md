@@ -13,3 +13,4 @@ Un ADR (*Architecture Decision Record*) registra una scelta di forma del progett
 | [0007](0007-privilegi-oslo-privsep.md) | Separazione dei privilegi con oslo.privsep |
 | [0008](0008-servizio-stile-openstack.md) | Flask + uwsgi sulla porta 5238, registrato nel catalogo Keystone |
 | [0009](0009-plugin-devstack.md) | Plugin DevStack `recon-stack` |
+| [0010](0010-dashboard-plugin-horizon.md) | Dashboard come plugin di Horizon (supera la dashboard Jinja2) |
