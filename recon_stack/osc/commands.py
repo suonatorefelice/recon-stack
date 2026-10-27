@@ -155,6 +155,27 @@ class DiffScan(show.ShowOne):
         return columns, values
 
 
+class ExposureScan(lister.Lister):
+    """Elenca le segnalazioni di esposizione di una scansione (step 11)."""
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("scan", metavar="<id-scansione>",
+                            help="Id della scansione di cui mostrare le segnalazioni.")
+        parser.add_argument("--severity", metavar="<gravità>",
+                            choices=("high", "medium", "low", "info"),
+                            help="Filtra per gravità (high, medium, low, info).")
+        return parser
+
+    def take_action(self, parsed_args):
+        findings = _client(self).get_scan_exposure(
+            parsed_args.scan, severity=parsed_args.severity)
+        headers = ("Gravità", "Tipo", "Indirizzo", "Porta", "Descrizione")
+        rows = [(f.get("severity"), f.get("type"), f.get("ip_address"),
+                 f.get("port_number"), f.get("message")) for f in findings]
+        return headers, rows
+
+
 class StartScan(show.ShowOne):
     """Avvia una nuova scansione di un progetto (serve il ruolo admin)."""
 

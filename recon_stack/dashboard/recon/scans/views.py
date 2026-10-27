@@ -46,6 +46,12 @@ class DetailView(generic.TemplateView):
             context["diff"] = client.get_scan_diff(self.kwargs["scan_id"])
         except Exception:
             context["diff"] = None
+        # Segnalazioni di esposizione (Step 11); stesso criterio: se fallisce
+        # mostriamo comunque il resto della pagina.
+        try:
+            context["findings"] = client.get_scan_exposure(self.kwargs["scan_id"])
+        except Exception:
+            context["findings"] = None
         return context
 
 

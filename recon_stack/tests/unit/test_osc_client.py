@@ -55,6 +55,17 @@ def test_list_services_estrae_la_lista():
     assert session.last_get[1] == {"name": "ssh"}
 
 
+def test_get_scan_exposure_estrae_le_segnalazioni():
+    session = _Session({"findings": [{"type": "overexposed"}], "scan": None})
+    client = client_mod.ReconClient(session, endpoint="http://recon:5238")
+    findings = client.get_scan_exposure("s-1", severity="high")
+
+    url, params = session.last_get
+    assert url == "http://recon:5238/v1/scans/s-1/exposure"
+    assert params == {"severity": "high"}
+    assert findings == [{"type": "overexposed"}]
+
+
 def test_create_scan_fa_una_post_con_project_id():
     session = _Session({"id": "scan-1", "status": "PENDING"})
     client = client_mod.ReconClient(session, endpoint="http://recon:5238")

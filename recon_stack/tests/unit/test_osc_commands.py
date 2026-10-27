@@ -52,6 +52,12 @@ class _FakeClient:
                                        "protocol": "tcp", "name": "http"}],
                 "services_disappeared": []}
 
+    def get_scan_exposure(self, scan_id, severity=None):
+        self.calls.append(("get_scan_exposure", scan_id, severity))
+        return [{"type": "overexposed", "severity": "high",
+                 "ip_address": "10.0.0.5", "port_number": 22, "protocol": "tcp",
+                 "message": "ssh aperto a tutti"}]
+
 
 class _ClientManager:
     def __init__(self, recon):
@@ -107,3 +113,11 @@ def test_scan_diff_riassume_le_differenze():
     assert client.calls[0] == ("get_scan_diff", "s-9")
     assert values[columns.index("Host comparsi")] == "10.0.0.9"
     assert values[columns.index("Servizi comparsi")] == "10.0.0.5 80/tcp http"
+
+
+def test_scan_exposure_elenca_le_segnalazioni():
+    (headers, rows), client = _run(commands.ExposureScan, scan="s-9",
+                                   severity=None)
+    assert client.calls[0] == ("get_scan_exposure", "s-9", None)
+    assert rows == [("high", "overexposed", "10.0.0.5", 22,
+                     "ssh aperto a tutti")]

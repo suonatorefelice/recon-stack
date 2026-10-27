@@ -20,6 +20,32 @@
     <dt>{% trans "Motivo" %}</dt><dd>{{ scan.fault|default:"—" }}</dd>
   </dl>
 
+  {% if findings %}
+  <h3>{% trans "Esposizione" %}</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>{% trans "Gravità" %}</th>
+        <th>{% trans "Tipo" %}</th>
+        <th>{% trans "Indirizzo" %}</th>
+        <th>{% trans "Porta" %}</th>
+        <th>{% trans "Descrizione" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr>
+        <td>{{ f.severity }}</td>
+        <td>{{ f.type }}</td>
+        <td>{{ f.ip_address|default:"—" }}</td>
+        <td>{% if f.port_number %}{{ f.port_number }}/{{ f.protocol }}{% else %}—{% endif %}</td>
+        <td>{{ f.message }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
   {% if diff %}
   <h3>{% trans "Confronto con la scansione precedente" %}</h3>
   <dl class="dl-horizontal">

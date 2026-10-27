@@ -61,6 +61,10 @@ class ReconClient:
     def get_scan_diff(self, scan_id):
         return self._get(f"/v1/scans/{scan_id}/diff")
 
+    def get_scan_exposure(self, scan_id, severity=None):
+        return self._get(f"/v1/scans/{scan_id}/exposure",
+                         severity=severity)["findings"]
+
     def create_scan(self, project_id):
         return self.session.post(
             self._url("/v1/scans"), json={"project_id": project_id}).json()

@@ -80,6 +80,20 @@ def _host_dict(host):
     }
 
 
+def _finding_dict(finding):
+    """Rappresentazione di una segnalazione di esposizione (step 11)."""
+    return {
+        "id": finding.id,
+        "scan_id": finding.scan_id,
+        "type": finding.finding_type,
+        "severity": finding.severity,
+        "ip_address": finding.ip_address,
+        "port_number": finding.port_number,
+        "protocol": finding.protocol,
+        "message": finding.message,
+    }
+
+
 def _service_dict(service):
     """Rappresentazione di un servizio in ascolto su un host."""
     return {
@@ -158,6 +172,25 @@ def get_scan_diff(scan_id):
     if diff is None:
         flask.abort(404, f"scansione '{scan_id}' non trovata")
     return flask.jsonify(diff)
+
+
+@bp.get("/scans/<scan_id>/exposure")
+def get_scan_exposure(scan_id):
+    """Segnalazioni di esposizione di una scansione (step 11).
+
+    Sono il risultato del confronto fra i servizi trovati e i security group:
+    regola inutile, servizio latente, esposizione eccessiva, host non censito,
+    floating IP inutile. Filtrabili per ?severity= (high/medium/low/info); sono
+    già ordinate dalla più grave.
+    """
+    _require_admin()
+    scan = db.get_scan(scan_id)
+    if scan is None:
+        flask.abort(404, f"scansione '{scan_id}' non trovata")
+    findings = db.get_findings(
+        scan_id, severity=flask.request.args.get("severity"))
+    return flask.jsonify(scan=_scan_ref(scan),
+                         findings=[_finding_dict(f) for f in findings])
 
 
 @bp.post("/scans")

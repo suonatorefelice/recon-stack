@@ -124,6 +124,45 @@ def test_diff_scansione_inesistente_404(client):
     assert client.get("/v1/scans/x/diff", headers=_admin()).status_code == 404
 
 
+def test_esposizione_di_una_scansione(client):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+    db.save_findings([
+        {"scan_id": scan.id, "finding_type": models.FINDING_OVEREXPOSED,
+         "severity": models.SEVERITY_HIGH, "ip_address": "10.10.10.5",
+         "port_number": 22, "protocol": "tcp", "message": "ssh aperto a tutti"},
+        {"scan_id": scan.id, "finding_type": models.FINDING_USELESS_RULE,
+         "severity": models.SEVERITY_LOW, "ip_address": "10.10.10.5",
+         "port_number": 3306, "protocol": "tcp", "message": "regola inutile"},
+    ])
+
+    resp = client.get(f"/v1/scans/{scan.id}/exposure", headers=_admin())
+    assert resp.status_code == 200
+    body = resp.get_json()
+    # Ordinate dalla più grave: prima l'esposizione eccessiva (high).
+    assert [f["type"] for f in body["findings"]] == [
+        models.FINDING_OVEREXPOSED, models.FINDING_USELESS_RULE]
+    assert body["findings"][0]["message"] == "ssh aperto a tutti"
+
+    # Filtro per gravità.
+    resp = client.get(f"/v1/scans/{scan.id}/exposure?severity=low",
+                      headers=_admin())
+    assert [f["type"] for f in resp.get_json()["findings"]] == [
+        models.FINDING_USELESS_RULE]
+
+
+def test_esposizione_scansione_inesistente_404(client):
+    assert client.get("/v1/scans/x/exposure",
+                      headers=_admin()).status_code == 404
+
+
+def test_esposizione_richiede_admin(client):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+    resp = client.get(f"/v1/scans/{scan.id}/exposure", headers=_member())
+    assert resp.status_code == 403
+
+
 def test_dettaglio_scansione_e_404(client):
     scan, _ = _seed_scan_done()
     ok = client.get(f"/v1/scans/{scan.id}", headers=_admin())
