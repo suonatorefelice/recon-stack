@@ -96,3 +96,26 @@ def discover_services(network_id, targets, driver=None):
              "profondità '%s'", network_id, namespace, len(targets), scope)
     nmap_xml = priv_discovery.service_scan_xml(namespace, list(targets), scope)
     return parse_services(nmap_xml)
+
+
+def discover_external_services(targets):
+    """Service discovery sui floating IP, visti da fuori (step 11).
+
+    È la "vista esterna": invece di entrare nella namespace di una rete di
+    progetto, scansioniamo i floating IP dalla namespace radice dell'host, da
+    cui il nodo DevStack raggiunge la rete public. Serve a sapere quali servizi
+    sono davvero raggiungibili da Internet, non solo dall'interno.
+
+    - targets: i floating IP da scansionare (già nel perimetro: il perimetro
+      include i floating IP del progetto, ADR 0005);
+    Restituisce lo stesso dizionario di discover_services, {ip: [servizi]}, dove
+    però l'ip è il floating IP. Se non ci sono bersagli non scansiona.
+    """
+    if not targets:
+        return {}
+    scope = conf.CONF.scanner.service_scan_scope
+    LOG.info("service discovery esterno su %d floating IP, profondità '%s'",
+             len(targets), scope)
+    # namespace=None: nmap gira nella namespace radice (vedi privsep/discovery.py).
+    nmap_xml = priv_discovery.service_scan_xml(None, list(targets), scope)
+    return parse_services(nmap_xml)

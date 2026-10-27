@@ -116,6 +116,20 @@ FAKE_XML = """<nmaprun>
   <host><status state="up"/><address addr="10.10.10.50" addrtype="ipv4"/></host>
 </nmaprun>"""
 
+# XML di nmap (vista esterna): sul floating IP .10 risponde solo ssh. Serve a
+# provare che la scansione esterna aggancia i servizi all'host dell'IP privato.
+FAKE_EXTERNAL_XML = """<nmaprun>
+  <host>
+    <address addr="172.24.4.10" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh" product="OpenSSH" version="8.9p1"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>"""
+
 # XML di nmap (service discovery): la VM web (.5) espone ssh e http; l'intruso
 # (.50) espone una porta ssh. Il router (.1) non ha porte aperte.
 FAKE_SERVICES_XML = """<nmaprun>
@@ -157,8 +171,16 @@ def no_privsep(monkeypatch):
     """
     monkeypatch.setattr(discovery.priv_discovery, "live_hosts_xml",
                         lambda namespace, targets: FAKE_XML)
+
+    # service_scan_xml serve sia alla vista interna (namespace della rete) sia a
+    # quella esterna (namespace=None, sui floating IP): distinguiamo dai target.
+    def finta_service_scan(namespace, targets, scope):
+        if namespace is None:
+            return FAKE_EXTERNAL_XML
+        return FAKE_SERVICES_XML
+
     monkeypatch.setattr(discovery.priv_discovery, "service_scan_xml",
-                        lambda namespace, targets, scope: FAKE_SERVICES_XML)
+                        finta_service_scan)
 
 
 # --- run_scan ----------------------------------------------------------------
@@ -191,18 +213,32 @@ def test_la_scansione_trova_i_servizi_sugli_host_che_rispondono(database, no_pri
     for svc in db.get_services(scan.id):
         services_by_ip.setdefault(hosts_by_id[svc.host_id].ip_address, []).append(svc)
 
-    # La VM web (.5) espone ssh e http, con prodotto e versione.
-    web = sorted(services_by_ip["10.10.10.5"], key=lambda s: s.port_number)
+    # La VM web (.5) espone ssh e http dall'interno, con prodotto e versione.
+    web = sorted([s for s in services_by_ip["10.10.10.5"]
+                  if s.view == models.VIEW_INTERNAL], key=lambda s: s.port_number)
     assert [(s.port_number, s.name) for s in web] == [(22, "ssh"), (80, "http")]
     assert web[0].product == "OpenSSH" and web[0].version == "8.9p1"
-    # Tutti i servizi sono visti dall'interno (i floating IP arrivano allo Step 11).
-    assert all(s.view == models.VIEW_INTERNAL for s in web)
     # Anche l'host sconosciuto (.50) viene interrogato: espone ssh senza versione.
-    intruso = services_by_ip["10.10.10.50"]
+    intruso = [s for s in services_by_ip["10.10.10.50"]
+               if s.view == models.VIEW_INTERNAL]
     assert [(s.port_number, s.name) for s in intruso] == [(22, "ssh")]
     assert intruso[0].product is None and intruso[0].version is None
     # Il router (.1) non ha porte aperte: nessun servizio.
     assert "10.10.10.1" not in services_by_ip
+
+
+def test_la_scansione_vede_i_servizi_esterni_sul_floating_ip(database, no_privsep):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    scan_mod.run_scan(FakeConnection(), scan.id)
+
+    hosts_by_id = {h.id: h for h in db.get_hosts(scan.id)}
+    external = [s for s in db.get_services(scan.id)
+                if s.view == models.VIEW_EXTERNAL]
+    # Il floating IP 172.24.4.10 inoltra verso 10.10.10.5 (la VM web): il
+    # servizio ssh visto da fuori si aggancia a quell'host, con vista esterna.
+    assert len(external) == 1
+    assert hosts_by_id[external[0].host_id].ip_address == "10.10.10.5"
+    assert (external[0].port_number, external[0].name) == (22, "ssh")
 
 
 def test_la_scansione_scrive_il_perimetro_nel_log(database, no_privsep):

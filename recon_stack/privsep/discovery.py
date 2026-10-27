@@ -16,6 +16,11 @@
 # di arrivare qui, e scope è una parola presa da un elenco chiuso. Non
 # costruiamo comandi a partire da testo libero: dal confine privilegiato non
 # passano mai opzioni nmap libere.
+#
+# namespace può anche essere None: significa "nessuna network namespace", cioè
+# si esegue nmap direttamente nella namespace radice dell'host. Serve alla vista
+# esterna (step 11), perché il nodo DevStack raggiunge la rete public (e quindi
+# i floating IP) senza entrare in una namespace di progetto.
 
 from oslo_concurrency import processutils
 
@@ -38,6 +43,16 @@ _SCOPE_FLAGS = {
 }
 
 
+def _namespace_prefix(namespace):
+    """Prefisso del comando per entrare in una namespace, o vuoto se None.
+
+    Con un nome restituisce ["ip", "netns", "exec", <nome>]; con None restituisce
+    una lista vuota, così nmap gira nella namespace radice dell'host (vista
+    esterna, step 11).
+    """
+    return ["ip", "netns", "exec", namespace] if namespace else []
+
+
 @recon_privsep.entrypoint
 def live_hosts_xml(namespace, targets):
     """Esegue la scoperta degli host nel namespace e restituisce l'XML di nmap.
@@ -47,7 +62,7 @@ def live_hosts_xml(namespace, targets):
       -n    non risolvere i nomi DNS (più veloce e senza traffico extra);
       -oX - scrive il risultato in XML sullo standard output.
     """
-    command = ["ip", "netns", "exec", namespace, NMAP, "-sn", "-n", "-oX", "-",
+    command = [*_namespace_prefix(namespace), NMAP, "-sn", "-n", "-oX", "-",
                *targets]
     stdout, _stderr = processutils.execute(*command)
     return stdout
@@ -62,14 +77,15 @@ def service_scan_xml(namespace, targets, scope="top1000"):
       -n    non risolvere i nomi DNS;
       -oX - scrive il risultato in XML sullo standard output.
     A queste si aggiungono le opzioni che decidono quante porte esaminare,
-    scelte da scope (vedi _SCOPE_FLAGS).
+    scelte da scope (vedi _SCOPE_FLAGS). namespace=None esegue la scansione
+    nella namespace radice dell'host (vista esterna sui floating IP).
     """
     flags = _SCOPE_FLAGS.get(scope)
     if flags is None:
         # Non dovrebbe succedere: le choices in conf.py filtrano già il valore.
         # Questo protegge il demone se qualcuno lo chiama con un valore a mano.
         raise ValueError(f"profondità di scansione sconosciuta: {scope}")
-    command = ["ip", "netns", "exec", namespace, NMAP, "-sV", "-n", "-oX", "-",
+    command = [*_namespace_prefix(namespace), NMAP, "-sV", "-n", "-oX", "-",
                *flags, *targets]
     stdout, _stderr = processutils.execute(*command)
     return stdout

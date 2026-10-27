@@ -107,3 +107,32 @@ def test_discover_passa_il_namespace_e_la_profondita(monkeypatch):
     assert visti["targets"] == ["10.10.10.5", "10.10.10.50"]
     assert visti["scope"] == "comuni"
     assert set(result) == {"10.10.10.5", "10.10.10.50"}
+
+
+# --- discover_external_services ----------------------------------------------
+
+def test_discover_esterno_usa_la_namespace_radice(monkeypatch):
+    conf.load([])
+    conf.CONF.set_override("service_scan_scope", "top1000", group="scanner")
+    visti = {}
+
+    def finta(namespace, targets, scope):
+        visti["namespace"] = namespace
+        visti["targets"] = targets
+        return SERVICES_XML
+
+    monkeypatch.setattr(services.priv_discovery, "service_scan_xml", finta)
+    result = services.discover_external_services(["172.24.4.10"])
+
+    # La vista esterna non entra in nessuna namespace di progetto: namespace=None.
+    assert visti["namespace"] is None
+    assert visti["targets"] == ["172.24.4.10"]
+    assert result  # ha analizzato l'XML
+
+
+def test_discover_esterno_senza_floating_ip_non_scansiona(monkeypatch):
+    chiamata = []
+    monkeypatch.setattr(services.priv_discovery, "service_scan_xml",
+                        lambda *a, **k: chiamata.append(a) or "<nmaprun/>")
+    assert services.discover_external_services([]) == {}
+    assert chiamata == []
