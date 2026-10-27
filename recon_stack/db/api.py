@@ -149,6 +149,16 @@ def list_scans(project_id=None, status=None):
         return list(session.scalars(query))
 
 
+def get_latest_scan(project_id=None, status=models.SCAN_DONE):
+    """La scansione più recente, filtrabile per progetto e stato (None se nessuna).
+
+    Serve all'API (Step 8) per il "catalogo": i risultati da mostrare sono
+    quelli dell'ultima scansione completata (status DONE) del progetto.
+    """
+    scans = list_scans(project_id=project_id, status=status)
+    return scans[0] if scans else None
+
+
 # --- Host --------------------------------------------------------------------
 
 def save_hosts(scan_id, hosts):
@@ -174,6 +184,12 @@ def get_hosts(scan_id, classification=None):
         return list(session.scalars(query))
 
 
+def get_host(host_id):
+    """Restituisce l'host con questo id, oppure None se non esiste."""
+    with session_scope() as session:
+        return session.get(models.Host, host_id)
+
+
 # --- Servizi -----------------------------------------------------------------
 
 def save_services(services):
@@ -188,15 +204,23 @@ def save_services(services):
             models.Service(**service) for service in services)
 
 
-def get_services(scan_id):
-    """Elenco dei servizi trovati da una scansione (unendo host e servizi).
+def get_services(scan_id=None, host_id=None, name=None):
+    """Elenco dei servizi, filtrabile per scansione, host e nome del servizio.
 
-    Comodo per i test e, più avanti, per la API /v1/services: parte da una
-    scansione e segue il collegamento host -> servizi.
+    - scan_id: tutti i servizi di una scansione (segue host -> servizi);
+    - host_id: i servizi di un singolo host (per GET /v1/hosts/<id>);
+    - name: solo i servizi con quel nome (per la ricerca GET /v1/services?name=).
+    I filtri si combinano; senza filtri restituisce tutti i servizi.
     """
-    query = (sqlalchemy.select(models.Service)
-             .join(models.Host, models.Service.host_id == models.Host.id)
-             .where(models.Host.scan_id == scan_id))
+    query = sqlalchemy.select(models.Service)
+    if scan_id is not None:
+        query = (query
+                 .join(models.Host, models.Service.host_id == models.Host.id)
+                 .where(models.Host.scan_id == scan_id))
+    if host_id is not None:
+        query = query.where(models.Service.host_id == host_id)
+    if name is not None:
+        query = query.where(models.Service.name == name)
     with session_scope() as session:
         return list(session.scalars(query))
 

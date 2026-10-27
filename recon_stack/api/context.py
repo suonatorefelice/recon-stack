@@ -69,6 +69,10 @@ class RequestContext:
     def require_admin(self):
         """Lascia passare solo un chiamante autenticato e con ruolo admin.
 
+        Vale sia per avviare una scansione sia per leggere il catalogo via API
+        (Step 8): Recon-Stack è uno strumento per chi amministra il cloud e i
+        suoi dati sono inventari a livello di cloud (CLAUDE.md).
+
         Solleva NotAuthenticated o NotAuthorized: chi chiama le traduce nella
         risposta HTTP giusta (401 o 403) e, per le scansioni, registra comunque
         il tentativo nel log (Step 5).
@@ -76,4 +80,4 @@ class RequestContext:
         if not self.authenticated:
             raise NotAuthenticated("token Keystone assente o non valido")
         if not self.is_admin:
-            raise NotAuthorized(f"ruolo '{ADMIN_ROLE}' richiesto per le scansioni")
+            raise NotAuthorized(f"ruolo '{ADMIN_ROLE}' richiesto")
