@@ -20,6 +20,7 @@ import logging
 
 from recon_stack.db import api as db
 from recon_stack.db import models
+from recon_stack.scanner import diff as diff_mod
 from recon_stack.scanner import discovery
 from recon_stack.scanner import inventory
 from recon_stack.scanner import perimeter as perimeter_mod
@@ -91,6 +92,10 @@ def run_scan(conn, scan_id):
                        finished_at=models.utcnow())
         LOG.info("scansione %s completata: %d host, %d servizi",
                  scan_id, len(all_hosts), len(all_services))
+
+        # Confronto con la scansione precedente: comparse e scomparse (Step 10).
+        # Solo un riepilogo nel log; non deve far fallire la scansione.
+        diff_mod.log_diff(scan_id)
     except Exception as exc:
         db.update_scan(scan_id, status=models.SCAN_FAILED,
                        finished_at=models.utcnow(), fault=str(exc))

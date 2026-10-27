@@ -95,6 +95,35 @@ def test_elenco_scansioni(client):
     assert scans[0]["status"] == models.SCAN_DONE
 
 
+def test_diff_scansione(client):
+    # Prima scansione: solo la VM web. Seconda: web + un intruso.
+    first = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                           status=models.SCAN_DONE)
+    db.save_hosts(first.id, [
+        {"ip_address": "10.10.10.5", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": "web",
+         "classification": models.HOST_KNOWN}])
+    second = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                            status=models.SCAN_DONE)
+    db.save_hosts(second.id, [
+        {"ip_address": "10.10.10.5", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": "web",
+         "classification": models.HOST_KNOWN},
+        {"ip_address": "10.10.10.50", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": None,
+         "classification": models.HOST_UNKNOWN}])
+
+    resp = client.get(f"/v1/scans/{second.id}/diff", headers=_admin())
+    assert resp.status_code == 200
+    diff = resp.get_json()
+    assert diff["previous_scan_id"] == first.id
+    assert diff["hosts_appeared"] == ["10.10.10.50"]
+
+
+def test_diff_scansione_inesistente_404(client):
+    assert client.get("/v1/scans/x/diff", headers=_admin()).status_code == 404
+
+
 def test_dettaglio_scansione_e_404(client):
     scan, _ = _seed_scan_done()
     ok = client.get(f"/v1/scans/{scan.id}", headers=_admin())

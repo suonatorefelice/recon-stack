@@ -19,6 +19,24 @@
     <dt>{% trans "Conclusa" %}</dt><dd>{{ scan.finished_at|default:"—" }}</dd>
     <dt>{% trans "Motivo" %}</dt><dd>{{ scan.fault|default:"—" }}</dd>
   </dl>
+
+  {% if diff %}
+  <h3>{% trans "Confronto con la scansione precedente" %}</h3>
+  <dl class="dl-horizontal">
+    <dt>{% trans "Host comparsi" %}</dt>
+    <dd>{{ diff.hosts_appeared|join:", "|default:"—" }}</dd>
+    <dt>{% trans "Host spariti" %}</dt>
+    <dd>{{ diff.hosts_disappeared|join:", "|default:"—" }}</dd>
+    <dt>{% trans "Servizi comparsi" %}</dt>
+    <dd>
+      {% for s in diff.services_appeared %}{{ s.ip }} {{ s.port }}/{{ s.protocol }} {{ s.name|default:"" }}<br>{% empty %}—{% endfor %}
+    </dd>
+    <dt>{% trans "Servizi spariti" %}</dt>
+    <dd>
+      {% for s in diff.services_disappeared %}{{ s.ip }} {{ s.port }}/{{ s.protocol }} {{ s.name|default:"" }}<br>{% empty %}—{% endfor %}
+    </dd>
+  </dl>
+  {% endif %}
   {% else %}
   <p>{% trans "Scansione non trovata." %}</p>
   {% endif %}

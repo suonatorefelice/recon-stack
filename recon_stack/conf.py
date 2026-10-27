@@ -82,6 +82,30 @@ scanner_opts = [
              "(predefinito in DevStack recenti) usa ovnmeta-<id rete>; 'ovs' "
              "usa qdhcp-<id rete>. Si verifica sul nodo con 'sudo ip netns list'.",
     ),
+    cfg.IntOpt(
+        "scan_poll_interval",
+        default=15,
+        min=0,
+        help="Ogni quanti secondi recon-scanner controlla se ci sono scansioni "
+             "in attesa (stato PENDING, create da POST /v1/scans) e le esegue "
+             "(Step 10). 0 disattiva l'esecuzione automatica: in quel caso le "
+             "scansioni si avviano solo a mano con recon-stack-scan.",
+    ),
+    cfg.IntOpt(
+        "periodic_scan_interval",
+        default=0,
+        min=0,
+        help="Ogni quanti secondi recon-scanner avvia una scansione periodica "
+             "dei progetti elencati in periodic_projects (Step 10). 0 (default) "
+             "disattiva le scansioni periodiche.",
+    ),
+    cfg.ListOpt(
+        "periodic_projects",
+        default=[],
+        help="Progetti da scansionare periodicamente (nomi o id, separati da "
+             "virgola), usati solo se periodic_scan_interval è maggiore di 0. "
+             "Vuoto: nessuna scansione periodica.",
+    ),
     cfg.StrOpt(
         "service_scan_scope",
         default="top1000",

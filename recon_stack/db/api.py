@@ -149,6 +149,22 @@ def list_scans(project_id=None, status=None):
         return list(session.scalars(query))
 
 
+def get_previous_scan(project_id, before, status=models.SCAN_DONE):
+    """La scansione del progetto precedente a un certo istante (None se nessuna).
+
+    Serve al diff (Step 10): data una scansione, trova quella completata subito
+    prima, per confrontare i risultati. `before` è un datetime: prendiamo la più
+    recente fra quelle create prima di quell'istante.
+    """
+    query = (sqlalchemy.select(models.Scan)
+             .where(models.Scan.project_id == project_id)
+             .where(models.Scan.status == status)
+             .where(models.Scan.created_at < before)
+             .order_by(models.Scan.created_at.desc()))
+    with session_scope() as session:
+        return session.scalars(query).first()
+
+
 def get_latest_scan(project_id=None, status=models.SCAN_DONE):
     """La scansione più recente, filtrabile per progetto e stato (None se nessuna).
 

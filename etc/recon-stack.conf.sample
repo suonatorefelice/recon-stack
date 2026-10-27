@@ -30,6 +30,14 @@
 #max_perimeter_addresses = 65536
 # Secondi minimi fra due scansioni avviate dello stesso progetto (0 disattiva).
 #min_scan_interval = 60
+# Ogni quanti secondi lo scanner esegue le scansioni in attesa (PENDING, create
+# da POST /v1/scans). 0 disattiva l'esecuzione automatica (Step 10).
+#scan_poll_interval = 15
+# Ogni quanti secondi avviare una scansione periodica dei periodic_projects.
+# 0 (default) disattiva le scansioni periodiche.
+#periodic_scan_interval = 0
+# Progetti da scansionare periodicamente (nomi o id, separati da virgola).
+#periodic_projects =
 # Driver di rete di Neutron (ADR 0006): 'ovn' usa le namespace ovnmeta-<rete>,
 # 'ovs' usa qdhcp-<rete>. Si verifica con 'sudo ip netns list'.
 #network_driver = ovn

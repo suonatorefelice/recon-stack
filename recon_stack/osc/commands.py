@@ -130,6 +130,31 @@ class ShowScan(show.ShowOne):
         return _scan_show(_client(self).get_scan(parsed_args.scan))
 
 
+class DiffScan(show.ShowOne):
+    """Mostra cosa è cambiato fra una scansione e la precedente completata."""
+
+    def get_parser(self, prog_name):
+        parser = super().get_parser(prog_name)
+        parser.add_argument("scan", metavar="<id-scansione>",
+                            help="Id della scansione da confrontare.")
+        return parser
+
+    def take_action(self, parsed_args):
+        diff = _client(self).get_scan_diff(parsed_args.scan)
+        columns = ("Scansione precedente", "Host comparsi", "Host spariti",
+                   "Host riclassificati", "Servizi comparsi", "Servizi spariti")
+        values = (
+            diff.get("previous_scan_id") or "-",
+            "\n".join(diff["hosts_appeared"]) or "-",
+            "\n".join(diff["hosts_disappeared"]) or "-",
+            "\n".join(f"{h['ip']}: {h['from']} -> {h['to']}"
+                      for h in diff["hosts_reclassified"]) or "-",
+            "\n".join(_format_diff_service(s) for s in diff["services_appeared"]) or "-",
+            "\n".join(_format_diff_service(s) for s in diff["services_disappeared"]) or "-",
+        )
+        return columns, values
+
+
 class StartScan(show.ShowOne):
     """Avvia una nuova scansione di un progetto (serve il ruolo admin)."""
 
@@ -150,6 +175,12 @@ def _format_service(service):
     pezzi = (service.get("name"), service.get("product"), service.get("version"))
     descr = " ".join(p for p in pezzi if p)
     return f"{service.get('port_number')}/{service.get('protocol')} {descr}".rstrip()
+
+
+def _format_diff_service(service):
+    """Un servizio del diff in una riga, es. '10.0.0.5 22/tcp ssh'."""
+    name = service.get("name") or ""
+    return f"{service['ip']} {service['port']}/{service['protocol']} {name}".rstrip()
 
 
 def _scan_show(scan):

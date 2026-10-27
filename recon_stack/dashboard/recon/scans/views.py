@@ -32,13 +32,20 @@ class DetailView(generic.TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        client = api.reconclient(self.request)
         try:
-            scan = api.reconclient(self.request).get_scan(self.kwargs["scan_id"])
+            scan = client.get_scan(self.kwargs["scan_id"])
         except Exception:
             exceptions.handle(self.request,
                               _("Impossibile leggere la scansione dalla API."))
             scan = {}
         context["scan"] = api.wrap(scan) if scan else None
+        # Diff con la scansione precedente (Step 10); se fallisce non blocca la
+        # pagina, mostriamo solo i dati della scansione.
+        try:
+            context["diff"] = client.get_scan_diff(self.kwargs["scan_id"])
+        except Exception:
+            context["diff"] = None
         return context
 
 

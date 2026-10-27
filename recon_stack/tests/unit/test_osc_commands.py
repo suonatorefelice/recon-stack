@@ -43,6 +43,15 @@ class _FakeClient:
                 "created_at": "x", "started_at": None, "finished_at": None,
                 "fault": None}
 
+    def get_scan_diff(self, scan_id):
+        self.calls.append(("get_scan_diff", scan_id))
+        return {"previous_scan_id": "s-0",
+                "hosts_appeared": ["10.0.0.9"], "hosts_disappeared": [],
+                "hosts_reclassified": [],
+                "services_appeared": [{"ip": "10.0.0.5", "port": 80,
+                                       "protocol": "tcp", "name": "http"}],
+                "services_disappeared": []}
+
 
 class _ClientManager:
     def __init__(self, recon):
@@ -91,3 +100,10 @@ def test_scan_start_mostra_la_scansione_creata():
     (columns, values), client = _run(commands.StartScan, project="p-1")
     assert client.calls[0] == ("create_scan", "p-1")
     assert values[columns.index("Stato")] == "PENDING"
+
+
+def test_scan_diff_riassume_le_differenze():
+    (columns, values), client = _run(commands.DiffScan, scan="s-9")
+    assert client.calls[0] == ("get_scan_diff", "s-9")
+    assert values[columns.index("Host comparsi")] == "10.0.0.9"
+    assert values[columns.index("Servizi comparsi")] == "10.0.0.5 80/tcp http"

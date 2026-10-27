@@ -26,6 +26,7 @@ from recon_stack.api import context as context_mod
 from recon_stack.api import scans as scans_mod
 from recon_stack.db import api as db
 from recon_stack.db import models
+from recon_stack.scanner import diff as diff_mod
 
 bp = flask.Blueprint("v1", __name__, url_prefix="/v1")
 
@@ -142,6 +143,21 @@ def get_scan(scan_id):
     if scan is None:
         flask.abort(404, f"scansione '{scan_id}' non trovata")
     return flask.jsonify(_scan_dict(scan))
+
+
+@bp.get("/scans/<scan_id>/diff")
+def get_scan_diff(scan_id):
+    """Confronto fra una scansione e la precedente completata (Step 10).
+
+    Mostra host e servizi comparsi o spariti e gli host che hanno cambiato
+    classificazione. previous_scan_id è la scansione di riferimento (null se è
+    la prima del progetto).
+    """
+    _require_admin()
+    diff = diff_mod.diff_for_scan(scan_id)
+    if diff is None:
+        flask.abort(404, f"scansione '{scan_id}' non trovata")
+    return flask.jsonify(diff)
 
 
 @bp.post("/scans")
