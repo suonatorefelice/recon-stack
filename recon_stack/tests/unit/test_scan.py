@@ -99,20 +99,57 @@ def _port(ip, port_id, device_owner="compute:nova", device_id=None):
                 fixed_ips=[{"ip_address": ip, "subnet_id": "sub-1"}])
 
 
-# XML di nmap: rispondono la VM web (.5), il router (.1) e un intruso (.50).
-# La VM db (.6) non risponde.
+# XML di nmap (host discovery): rispondono la VM web (.5), il router (.1) e un
+# intruso (.50). La VM db (.6) non risponde.
 FAKE_XML = """<nmaprun>
   <host><status state="up"/><address addr="10.10.10.5" addrtype="ipv4"/></host>
   <host><status state="up"/><address addr="10.10.10.1" addrtype="ipv4"/></host>
   <host><status state="up"/><address addr="10.10.10.50" addrtype="ipv4"/></host>
 </nmaprun>"""
 
+# XML di nmap (service discovery): la VM web (.5) espone ssh e http; l'intruso
+# (.50) espone una porta ssh. Il router (.1) non ha porte aperte.
+FAKE_SERVICES_XML = """<nmaprun>
+  <host>
+    <address addr="10.10.10.5" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh" product="OpenSSH" version="8.9p1"/>
+      </port>
+      <port protocol="tcp" portid="80">
+        <state state="open"/>
+        <service name="http" product="nginx" version="1.18.0"/>
+      </port>
+    </ports>
+  </host>
+  <host>
+    <address addr="10.10.10.1" addrtype="ipv4"/>
+    <ports></ports>
+  </host>
+  <host>
+    <address addr="10.10.10.50" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open"/>
+        <service name="ssh"/>
+      </port>
+    </ports>
+  </host>
+</nmaprun>"""
+
 
 @pytest.fixture
 def no_privsep(monkeypatch):
-    """Sostituisce la funzione privilegiata con una che non tocca la rete."""
+    """Sostituisce le funzioni privilegiate con dati finti che non toccano la rete.
+
+    priv_discovery è lo stesso modulo visto sia da scanner/discovery.py sia da
+    scanner/services.py, quindi basta sostituirvi le due funzioni una volta.
+    """
     monkeypatch.setattr(discovery.priv_discovery, "live_hosts_xml",
                         lambda namespace, targets: FAKE_XML)
+    monkeypatch.setattr(discovery.priv_discovery, "service_scan_xml",
+                        lambda namespace, targets, scope: FAKE_SERVICES_XML)
 
 
 # --- run_scan ----------------------------------------------------------------
@@ -133,6 +170,30 @@ def test_scansione_completa_classifica_gli_host(database, no_privsep):
     # La VM censita porta il suo nome.
     web = next(h for h in known if h.ip_address == "10.10.10.5")
     assert web.server_name == "web"
+
+
+def test_la_scansione_trova_i_servizi_sugli_host_che_rispondono(database, no_privsep):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    scan_mod.run_scan(FakeConnection(), scan.id)
+
+    # Collego i servizi trovati all'IP del loro host per poterli controllare.
+    hosts_by_id = {h.id: h for h in db.get_hosts(scan.id)}
+    services_by_ip = {}
+    for svc in db.get_services(scan.id):
+        services_by_ip.setdefault(hosts_by_id[svc.host_id].ip_address, []).append(svc)
+
+    # La VM web (.5) espone ssh e http, con prodotto e versione.
+    web = sorted(services_by_ip["10.10.10.5"], key=lambda s: s.port_number)
+    assert [(s.port_number, s.name) for s in web] == [(22, "ssh"), (80, "http")]
+    assert web[0].product == "OpenSSH" and web[0].version == "8.9p1"
+    # Tutti i servizi sono visti dall'interno (i floating IP arrivano allo Step 11).
+    assert all(s.view == models.VIEW_INTERNAL for s in web)
+    # Anche l'host sconosciuto (.50) viene interrogato: espone ssh senza versione.
+    intruso = services_by_ip["10.10.10.50"]
+    assert [(s.port_number, s.name) for s in intruso] == [(22, "ssh")]
+    assert intruso[0].product is None and intruso[0].version is None
+    # Il router (.1) non ha porte aperte: nessun servizio.
+    assert "10.10.10.1" not in services_by_ip
 
 
 def test_la_scansione_scrive_il_perimetro_nel_log(database, no_privsep):

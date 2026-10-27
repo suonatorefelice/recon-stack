@@ -152,14 +152,17 @@ def list_scans(project_id=None, status=None):
 # --- Host --------------------------------------------------------------------
 
 def save_hosts(scan_id, hosts):
-    """Salva gli host trovati da una scansione.
+    """Salva gli host trovati da una scansione e li restituisce.
 
     hosts è una lista di dizionari con i campi di models.Host (li produce
-    scanner/discovery.classify). Li scriviamo tutti insieme.
+    scanner/discovery.classify). Li scriviamo tutti insieme e restituiamo gli
+    oggetti salvati: dopo il commit ognuno ha il suo id, che serve per
+    agganciarvi i servizi trovati (save_services, Step 7).
     """
+    objects = [models.Host(scan_id=scan_id, **host) for host in hosts]
     with session_scope() as session:
-        session.add_all(
-            models.Host(scan_id=scan_id, **host) for host in hosts)
+        session.add_all(objects)
+    return objects
 
 
 def get_hosts(scan_id, classification=None):
@@ -167,6 +170,33 @@ def get_hosts(scan_id, classification=None):
     query = sqlalchemy.select(models.Host).where(models.Host.scan_id == scan_id)
     if classification is not None:
         query = query.where(models.Host.classification == classification)
+    with session_scope() as session:
+        return list(session.scalars(query))
+
+
+# --- Servizi -----------------------------------------------------------------
+
+def save_services(services):
+    """Salva i servizi trovati dal service discovery (Step 7).
+
+    services è una lista di dizionari con i campi di models.Service, host_id
+    compreso (li costruisce scanner/scan.py agganciando i servizi agli host
+    già salvati). Li scriviamo tutti insieme.
+    """
+    with session_scope() as session:
+        session.add_all(
+            models.Service(**service) for service in services)
+
+
+def get_services(scan_id):
+    """Elenco dei servizi trovati da una scansione (unendo host e servizi).
+
+    Comodo per i test e, più avanti, per la API /v1/services: parte da una
+    scansione e segue il collegamento host -> servizi.
+    """
+    query = (sqlalchemy.select(models.Service)
+             .join(models.Host, models.Service.host_id == models.Host.id)
+             .where(models.Host.scan_id == scan_id))
     with session_scope() as session:
         return list(session.scalars(query))
 

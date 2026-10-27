@@ -33,3 +33,6 @@
 # Driver di rete di Neutron (ADR 0006): 'ovn' usa le namespace ovnmeta-<rete>,
 # 'ovs' usa qdhcp-<rete>. Si verifica con 'sudo ip netns list'.
 #network_driver = ovn
+# Quante porte esamina il service discovery (nmap -sV, Step 7): 'comuni' = ~100
+# porte (nmap -F), 'top1000' = 1000 porte (default nmap), 'tutte' = 65535 (-p-).
+#service_scan_scope = top1000

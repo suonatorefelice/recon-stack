@@ -82,6 +82,19 @@ scanner_opts = [
              "(predefinito in DevStack recenti) usa ovnmeta-<id rete>; 'ovs' "
              "usa qdhcp-<id rete>. Si verifica sul nodo con 'sudo ip netns list'.",
     ),
+    cfg.StrOpt(
+        "service_scan_scope",
+        default="top1000",
+        choices=["comuni", "top1000", "tutte"],
+        help="Quante porte TCP esaminare col service discovery (nmap -sV, "
+             "Step 7): decide quanto a fondo va la scansione. 'comuni' = le "
+             "circa 100 porte più comuni (nmap -F), rapidissima; 'top1000' = "
+             "le 1000 porte più comuni (default di nmap), buon compromesso; "
+             "'tutte' = tutte le 65535 porte (nmap -p-), copertura totale ma "
+             "molto più lenta. La parola scelta viene tradotta in opzioni nmap "
+             "dentro il demone privilegiato (privsep/discovery.py): dal confine "
+             "privilegiato non passano mai opzioni nmap libere.",
+    ),
 ]
 
 # Sezione [database] (ADR 0001).

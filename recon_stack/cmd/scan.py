@@ -1,10 +1,10 @@
 # Il comando recon-stack-scan: esegue a mano una scansione di un progetto.
 #
-# Serve a provare lo Step 6 (docs/piano.md) prima che la scansione sia avviata
-# dallo scheduler (step 10) o dalla API (step 8). Si lancia su DevStack come
-# root o con i privilegi per oslo.privsep, indicando il progetto demo: registra
-# una scansione, la esegue (perimetro, inventario, host discovery) e stampa un
-# riepilogo degli host per classificazione.
+# Serve a provare gli Step 6 e 7 (docs/piano.md) prima che la scansione sia
+# avviata dallo scheduler (step 10) o dalla API (step 8). Si lancia su DevStack
+# come root o con i privilegi per oslo.privsep, indicando il progetto demo:
+# registra una scansione, la esegue (perimetro, inventario, host discovery,
+# service discovery) e stampa un riepilogo degli host, con i servizi trovati.
 #
 # Uso (sul nodo DevStack):
 #   sudo recon-stack-scan --project recon-demo \
@@ -52,6 +52,12 @@ def main(argv=None):
     if scan.fault:
         print(f"  motivo: {scan.fault}")
         return 1
+    # Servizi trovati, raggruppati per host, per stamparli sotto il rispettivo
+    # indirizzo (gli assenti non ne hanno: non rispondono).
+    services_by_host = {}
+    for svc in db.get_services(scan.id):
+        services_by_host.setdefault(svc.host_id, []).append(svc)
+
     for label, value in (("censiti", models.HOST_KNOWN),
                          ("sconosciuti", models.HOST_UNKNOWN),
                          ("assenti", models.HOST_ABSENT)):
@@ -60,6 +66,11 @@ def main(argv=None):
         for h in hosts:
             name = h.server_name or h.classification
             print(f"    - {h.ip_address} ({name})")
+            for svc in sorted(services_by_host.get(h.id, []),
+                              key=lambda s: s.port_number):
+                # Es. "22/tcp ssh OpenSSH 8.9p1"; i pezzi mancanti si saltano.
+                descr = " ".join(p for p in (svc.name, svc.product, svc.version) if p)
+                print(f"        {svc.port_number}/{svc.protocol} {descr}".rstrip())
     return 0
 
 
