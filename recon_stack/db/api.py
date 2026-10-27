@@ -283,3 +283,31 @@ def get_inventory(scan_id):
                 sqlalchemy.select(models.InventorySecurityGroupRule)
                 .where(models.InventorySecurityGroupRule.scan_id == scan_id))),
         }
+
+
+# --- Segnalazioni di esposizione (step 11) -----------------------------------
+
+def save_findings(findings):
+    """Salva le segnalazioni di esposizione di una scansione.
+
+    findings è una lista di dizionari con i campi di models.ExposureFinding
+    (li costruisce scanner/exposure.py). Li scriviamo tutti insieme.
+    """
+    with session_scope() as session:
+        session.add_all(
+            models.ExposureFinding(**finding) for finding in findings)
+
+
+def get_findings(scan_id, severity=None):
+    """Segnalazioni di una scansione, dalla più grave, filtrabili per gravità."""
+    query = (sqlalchemy.select(models.ExposureFinding)
+             .where(models.ExposureFinding.scan_id == scan_id))
+    if severity is not None:
+        query = query.where(models.ExposureFinding.severity == severity)
+    with session_scope() as session:
+        findings = list(session.scalars(query))
+    # Ordiniamo in Python per gravità (SEVERITY_ORDER) e poi per indirizzo: così
+    # chi legge trova prima le segnalazioni più urgenti, a prescindere da SQLite.
+    findings.sort(key=lambda f: (models.SEVERITY_ORDER.get(f.severity, 99),
+                                 f.ip_address or "", f.port_number or 0))
+    return findings

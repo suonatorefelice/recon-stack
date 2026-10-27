@@ -1,15 +1,19 @@
-# Esecuzione di una scansione (step 6 e 7).
+# Esecuzione di una scansione (step 6, 7 e 11).
 #
 # Mette in fila i pezzi costruiti negli step precedenti e li fa diventare una
 # scansione vera:
 #   1. segna la scansione "in corso";
 #   2. calcola il perimetro leggendo Neutron (ADR 0005) e lo scrive nel log;
-#   3. raccoglie l'inventario del progetto (step 4);
+#   3. raccoglie l'inventario del progetto (step 4 e 11: VM, porte, floating IP,
+#      security group);
 #   4. per ogni rete del perimetro entra nella sua namespace (ADR 0006, 0007),
 #      scopre gli host che rispondono e li classifica confrontandoli con le
 #      porte Neutron (step 6); sugli host che hanno risposto (censiti e
 #      sconosciuti) cerca i servizi in ascolto (step 7);
-#   5. salva host e servizi e segna la scansione "completata".
+#   5. salva host e servizi (vista interna);
+#   6. vista esterna: cerca i servizi sui floating IP dalla rete public (step 11);
+#   7. confronta i servizi con i security group e produce le segnalazioni di
+#      esposizione (step 11), poi segna la scansione "completata".
 #
 # Se qualcosa va storto (Neutron irraggiungibile, perimetro troppo grande, un
 # bersaglio fuori perimetro) la scansione viene segnata "fallita" con il motivo,
@@ -22,6 +26,7 @@ from recon_stack.db import api as db
 from recon_stack.db import models
 from recon_stack.scanner import diff as diff_mod
 from recon_stack.scanner import discovery
+from recon_stack.scanner import exposure
 from recon_stack.scanner import inventory
 from recon_stack.scanner import perimeter as perimeter_mod
 from recon_stack.scanner import services as services_mod
@@ -96,11 +101,16 @@ def run_scan(conn, scan_id):
             floating_ips, saved_hosts, perimeter)
         db.save_services(external_services)
 
+        # 7. Esposizione (step 11): confronto fra i servizi trovati e i security
+        #    group, da cui nascono le segnalazioni (regola inutile, servizio
+        #    latente, esposizione eccessiva, ...). Legge quanto appena salvato.
+        findings = exposure.compute_and_save(scan_id)
+
         db.update_scan(scan_id, status=models.SCAN_DONE,
                        finished_at=models.utcnow())
         LOG.info("scansione %s completata: %d host, %d servizi interni, "
-                 "%d esterni", scan_id, len(all_hosts), len(all_services),
-                 len(external_services))
+                 "%d esterni, %d segnalazioni", scan_id, len(all_hosts),
+                 len(all_services), len(external_services), len(findings))
 
         # Confronto con la scansione precedente: comparse e scomparse (Step 10).
         # Solo un riepilogo nel log; non deve far fallire la scansione.

@@ -241,6 +241,19 @@ def test_la_scansione_vede_i_servizi_esterni_sul_floating_ip(database, no_privse
     assert (external[0].port_number, external[0].name) == (22, "ssh")
 
 
+def test_la_scansione_produce_segnalazioni_di_esposizione(database, no_privsep):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    scan_mod.run_scan(FakeConnection(), scan.id)
+
+    findings = db.get_findings(scan.id)
+    tipi = {f.finding_type for f in findings}
+    # L'host sconosciuto (.50) con ssh aperto deve essere segnalato.
+    assert models.FINDING_UNKNOWN_EXPOSED in tipi
+    # Senza security group nella scansione finta, i servizi dell'host censito
+    # risultano "latenti" (nessuna regola li prevede).
+    assert models.FINDING_LATENT_SERVICE in tipi
+
+
 def test_la_scansione_scrive_il_perimetro_nel_log(database, no_privsep):
     scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
     scan_mod.run_scan(FakeConnection(), scan.id)

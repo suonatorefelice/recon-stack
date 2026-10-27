@@ -65,6 +65,26 @@ VIEW_EXTERNAL = "external"  # vista esterna, sui floating IP
 DIRECTION_INGRESS = "ingress"  # traffico in entrata verso la VM
 DIRECTION_EGRESS = "egress"    # traffico in uscita dalla VM
 
+# Tipi di segnalazione di esposizione (step 11). Descrivono un'incongruenza fra
+# i servizi davvero in ascolto e ciò che i security group permettono, oppure una
+# situazione di rischio (host non censito, floating IP inutile).
+FINDING_USELESS_RULE = "useless_rule"            # regola che apre una porta senza servizio
+FINDING_LATENT_SERVICE = "latent_service"        # servizio attivo non previsto da regole
+FINDING_OVEREXPOSED = "overexposed"              # servizio aperto a qualunque indirizzo
+FINDING_EXTERNALLY_REACHABLE = "externally_reachable"  # confermato raggiungibile dal floating IP
+FINDING_UNKNOWN_EXPOSED = "unknown_exposed"      # host non censito con porte aperte
+FINDING_WASTED_FLOATING_IP = "wasted_floating_ip"  # floating IP senza servizi dietro
+FINDING_EXTERNAL_ONLY = "external_only"          # visto da fuori ma non censito internamente
+
+# Gravità di una segnalazione, dalla più alla meno urgente.
+SEVERITY_HIGH = "high"      # rischio concreto: va guardato subito
+SEVERITY_MEDIUM = "medium"  # da verificare
+SEVERITY_LOW = "low"        # pulizia / igiene della configurazione
+SEVERITY_INFO = "info"      # conferma, nessun problema in sé
+# Ordine di gravità, per presentare prima le segnalazioni più urgenti.
+SEVERITY_ORDER = {SEVERITY_HIGH: 0, SEVERITY_MEDIUM: 1,
+                  SEVERITY_LOW: 2, SEVERITY_INFO: 3}
+
 
 class Scan(Base):
     """Una scansione di un progetto: è anche la riga di log richiesta dai vincoli.
@@ -107,6 +127,8 @@ class Scan(Base):
     security_groups: Mapped[list["InventorySecurityGroup"]] = relationship(
         back_populates="scan", cascade="all, delete-orphan")
     security_group_rules: Mapped[list["InventorySecurityGroupRule"]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan")
+    findings: Mapped[list["ExposureFinding"]] = relationship(
         back_populates="scan", cascade="all, delete-orphan")
 
 
@@ -278,3 +300,29 @@ class InventorySecurityGroupRule(Base):
     remote_group_id: Mapped[str | None] = mapped_column(String(36))
 
     scan: Mapped[Scan] = relationship(back_populates="security_group_rules")
+
+
+class ExposureFinding(Base):
+    """Una segnalazione di esposizione prodotta da una scansione (step 11).
+
+    Nasce dal confronto fra i servizi trovati e i security group (scanner/
+    exposure.py). Il campo message contiene la spiegazione in italiano, pensata
+    per essere letta così com'è nella API, nel comando e nella dashboard; gli
+    altri campi servono a raggruppare e ordinare. La salviamo nel database come
+    gli altri risultati, così entra nello storico della scansione.
+    """
+
+    __tablename__ = "exposure_findings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id"), index=True)
+    finding_type: Mapped[str] = mapped_column(String(32))
+    severity: Mapped[str] = mapped_column(String(16))
+    # Indirizzo a cui la segnalazione si riferisce: l'IP di un host o un floating
+    # IP. Porta e protocollo ci sono solo per le segnalazioni legate a una porta.
+    ip_address: Mapped[str | None] = mapped_column(String(45), index=True)
+    port_number: Mapped[int | None]
+    protocol: Mapped[str | None] = mapped_column(String(8))
+    message: Mapped[str] = mapped_column(Text)
+
+    scan: Mapped[Scan] = relationship(back_populates="findings")
