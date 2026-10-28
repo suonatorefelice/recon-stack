@@ -1,0 +1,6 @@
+# Dipendenze necessarie solo per eseguire i test, non per il servizio.
+pytest>=7.0   # esegue i test in recon_stack/tests/unit
+eventlet>=0.33  # keystonemiddleware lo importa per la cache dei token; su DevStack
+                # c'è già, qui serve perché il test del middleware non fallisca
+python-memcached>=1.59  # idem: keystonemiddleware importa il modulo "memcache"
+                        # inizializzando la cache dei token (presente su DevStack)

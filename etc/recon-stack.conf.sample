@@ -1,0 +1,61 @@
+[DEFAULT]
+
+#
+# From recon_stack
+#
+
+# Scrive nei log anche i messaggi di dettaglio (livello DEBUG).
+# (boolean value)
+#debug = false
+
+
+[database]
+
+#
+# From recon_stack
+#
+
+# Indirizzo del database (SQLAlchemy). Su DevStack il plugin ci mette
+# utente, password e host. Forma:
+# mysql+pymysql://utente:password@host/recon_stack. (string value)
+#connection = mysql+pymysql://root@127.0.0.1/recon_stack
+
+
+[scanner]
+
+#
+# From recon_stack
+#
+
+# Profilo di /etc/openstack/clouds.yaml usato per leggere Nova e
+# Neutron. In DevStack 'devstack-admin' ha il ruolo admin. (string
+# value)
+#cloud = devstack-admin
+
+# Massimo numero di indirizzi interni di un perimetro: oltre, la
+# scansione non parte. Con il valore predefinito una /20 (4094
+# indirizzi utilizzabili) passa, una /19 o una /16 no. (integer value)
+# Minimum value: 1
+#max_perimeter_addresses = 4096
+
+# Secondi minimi fra due scansioni avviate dello stesso progetto
+# (limite di frequenza). 0 disattiva il limite. (integer value)
+# Minimum value: 0
+#min_scan_interval = 60
+
+# Ogni quanti secondi avviare una scansione periodica dei progetti in
+# periodic_projects. 0 (default) le disattiva. (integer value)
+# Minimum value: 0
+#periodic_scan_interval = 0
+
+# Progetti da scansionare periodicamente (nomi o id, separati da
+# virgola), usati solo se periodic_scan_interval > 0. (list value)
+#periodic_projects =
+
+# Quante porte TCP esamina il service discovery (nmap -sV). (string
+# value)
+# Possible values:
+# comuni - circa 100 porte (nmap -F), rapida
+# top1000 - le 1000 porte più comuni (default di nmap)
+# tutte - tutte le 65535 porte (nmap -p-), lenta
+#service_scan_scope = top1000

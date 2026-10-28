@@ -1,0 +1,11 @@
+# Dipendenze di runtime del servizio.
+pbr>=6.0.0           # packaging in stile OpenStack (setup.py, setup.cfg)
+Flask>=2.2.0         # applicazione web: API REST (la dashboard è Horizon, a parte)
+oslo.config>=9.0.0   # file di configurazione in stile OpenStack (/etc/recon-stack/recon-stack.conf)
+APScheduler>=3.10,<4 # esecuzione periodica dentro il server unico (ADR 0013)
+SQLAlchemy>=2.0.0    # accesso al database con classi Python invece di SQL scritto a mano (ADR 0001)
+PyMySQL>=1.0.0       # driver per il database MySQL (ADR 0001); puro Python, come nei servizi OpenStack
+openstacksdk>=1.0.0  # legge l'inventario da Nova e Neutron (cloud da /etc/openstack/clouds.yaml)
+keystonemiddleware>=10.0.0  # valida i token Keystone davanti alla API (ADR 0002)
+oslo.concurrency>=5.0.0  # esecuzione di comandi esterni (nmap) in modo sicuro (processutils)
+oslo.privsep>=2.6.0  # demone privilegiato per entrare nelle network namespace (ADR 0007)
