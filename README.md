@@ -93,7 +93,7 @@ $ recon-stack-inventory --project recon-demo \
     --config-file /etc/recon-stack/recon-stack.conf
 ```
 
-Il riepilogo stampato deve coincidere con:
+Il comando legge e stampa soltanto, non salva niente. Il riepilogo deve coincidere con:
 
 ```console
 $ openstack server list      --project recon-demo

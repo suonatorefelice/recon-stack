@@ -199,7 +199,7 @@ def test_inventario_vuoto(db):
                      "security_groups": [], "security_group_rules": []}
 
 
-def test_comando_inventory_crea_una_scansione_e_salva(db, monkeypatch, capsys):
+def test_comando_inventory_mostra_senza_salvare(db, monkeypatch, capsys):
     # Il comando usa cloud.connect() per aprire la connessione: la sostituiamo
     # con quella finta, così il test non tocca OpenStack.
     from recon_stack.cmd import inventory as cmd_inventory
@@ -213,11 +213,9 @@ def test_comando_inventory_crea_una_scansione_e_salva(db, monkeypatch, capsys):
     exit_code = cmd_inventory.main(["--project", "recon-demo"])
     assert exit_code == 0
 
-    # Ha creato esattamente una scansione per quel progetto, con l'inventario.
-    scans = api.list_scans(project_id="progetto-1")
-    assert len(scans) == 1
-    saved = api.get_inventory(scans[0].id)
-    assert len(saved["servers"]) == 1
+    # È di sola lettura: nessuna scansione creata (la prima versione ne lasciava
+    # una in RUNNING per sempre, trovato nel test su DevStack).
+    assert api.list_scans() == []
     # E ha stampato un riepilogo leggibile.
     assert "web" in capsys.readouterr().out
 

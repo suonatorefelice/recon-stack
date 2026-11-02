@@ -1,16 +1,18 @@
-# Il comando recon-stack-inventory: raccoglie e salva l'inventario di un
-# progetto, a mano.
+# Il comando recon-stack-inventory: legge e mostra l'inventario di un progetto,
+# a mano, senza salvarlo.
 #
-# Serve a provare lo Step 4 (docs/piano.md) prima che esista la scansione
-# completa: si lancia su DevStack indicando il progetto demo, legge VM, porte e
-# floating IP da Nova e Neutron, li salva in una nuova scansione e stampa un
-# riepilogo. Il riepilogo si confronta con:
+# Serve a provare lo Step 4 (docs/piano.md): si lancia su DevStack indicando il
+# progetto demo, legge VM, porte, floating IP e security group da Nova e
+# Neutron e stampa un riepilogo. Il riepilogo si confronta con:
 #   openstack server list      --project recon-demo
 #   openstack port list        --project recon-demo
 #   openstack floating ip list --project recon-demo
 #
-# Più avanti (Step 5-6) la raccolta diventerà il primo passo di una scansione
-# vera avviata dallo scanner; questo comando resta comodo per il debug.
+# Il comando è di sola lettura: non crea scansioni nel database. Nella prima
+# versione salvava l'inventario in una scansione nuova lasciata in RUNNING per
+# sempre (nessuno la chiudeva), che compariva in "openstack recon scan list"
+# (trovato nel test su DevStack). L'inventario salvato lo produce la scansione
+# vera (recon-stack-scan o POST /v1/scans), di cui è il primo passo.
 #
 # Uso:
 #   recon-stack-inventory --project recon-demo
@@ -21,8 +23,6 @@ import logging
 import sys
 
 from recon_stack import conf
-from recon_stack.db import api
-from recon_stack.db import models
 from recon_stack.scanner import cloud
 from recon_stack.scanner import inventory
 
@@ -37,7 +37,7 @@ def main(argv=None):
     # parse_known_args e glieli giriamo.
     parser = argparse.ArgumentParser(
         prog="recon-stack-inventory",
-        description="Raccoglie l'inventario di un progetto e lo salva.")
+        description="Legge e mostra l'inventario di un progetto, senza salvarlo.")
     parser.add_argument("--project", required=True,
                         help="Nome o id del progetto da inventariare.")
     args, rest = parser.parse_known_args(argv)
@@ -53,13 +53,13 @@ def main(argv=None):
         return 1
     project_id = project.id
 
-    scan = api.create_scan(project_id, models.TRIGGER_MANUAL,
-                           status=models.SCAN_RUNNING)
-    servers, ports, floating_ips, security_groups, rules = inventory.collect_and_save(
-        conn, project_id, scan.id)
+    # scan_id=None: gli oggetti non sono legati a nessuna scansione e non
+    # vengono salvati (collect legge soltanto, vedi scanner/inventory.py).
+    servers, ports, floating_ips, security_groups, rules = inventory.collect(
+        conn, project_id, None)
 
     print(f"Inventario del progetto {project.name} ({project_id}),"
-          f" scansione {scan.id}:")
+          " sola lettura:")
     print(f"  VM:           {len(servers)}")
     for s in servers:
         print(f"    - {s.name} [{s.status}] {s.server_id}")
