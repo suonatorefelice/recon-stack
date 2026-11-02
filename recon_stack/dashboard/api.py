@@ -22,9 +22,11 @@ from recon_stack.osc import client as osc_client
 class _TokenSession:
     """Adatta `requests` all'interfaccia che si aspetta ReconClient.
 
-    ReconClient usa session.get(url, params=...).json() e session.post(url,
-    json=...).json(), e conta sul fatto che la sessione sollevi un errore sulle
-    risposte 4xx/5xx. Qui lo facciamo con `requests`, aggiungendo a ogni
+    ReconClient usa session.get(url, params=..., raise_exc=False) e
+    session.post(url, json=..., raise_exc=False), come la sessione di
+    keystoneauth1: con raise_exc=False la risposta d'errore torna al client,
+    che legge il messaggio della API e lo trasforma in un errore leggibile
+    (osc/client.py). Qui lo facciamo con `requests`, aggiungendo a ogni
     richiesta il token dell'utente.
     """
 
@@ -33,14 +35,16 @@ class _TokenSession:
         self.http = http or requests.Session()
         self.http.headers["X-Auth-Token"] = token
 
-    def get(self, url, params=None):
+    def get(self, url, params=None, raise_exc=True):
         response = self.http.get(url, params=params)
-        response.raise_for_status()
+        if raise_exc:
+            response.raise_for_status()
         return response
 
-    def post(self, url, json=None):
+    def post(self, url, json=None, raise_exc=True):
         response = self.http.post(url, json=json)
-        response.raise_for_status()
+        if raise_exc:
+            response.raise_for_status()
         return response
 
 

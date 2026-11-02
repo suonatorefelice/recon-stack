@@ -14,8 +14,22 @@
 # espone get() e post() (quella di keystoneauth1). Nei test gliene passiamo una
 # finta, così si prova senza un vero Keystone.
 
+from osc_lib import exceptions
+
 # Tipo di servizio con cui l'endpoint è registrato nel catalogo Keystone.
 SERVICE_TYPE = "recon"
+
+
+def _error_message(response):
+    """Il messaggio d'errore della nostra API, es. "ruolo 'admin' richiesto".
+
+    La API risponde agli errori con {"error": "..."} (api/app.py). Se il corpo
+    non è in quel formato (ad esempio un errore di un proxy), usiamo il testo.
+    """
+    try:
+        return response.json().get("error") or response.text
+    except ValueError:
+        return response.text
 
 
 class ReconClient:
@@ -43,12 +57,27 @@ class ReconClient:
     def _url(self, path):
         return self.endpoint.rstrip("/") + path
 
+    def _call(self, method, path, **kwargs):
+        """Esegue una richiesta e restituisce il JSON della risposta.
+
+        raise_exc=False: la sessione di keystoneauth1, sugli errori 4xx/5xx,
+        solleverebbe da sola un'eccezione cercando il messaggio nel formato
+        degli altri componenti OpenStack; il nostro formato è diverso e
+        l'utente vedeva solo "Unrecognized schema in response body" (trovato
+        nel test su DevStack, con il limite di frequenza). Leggiamo noi
+        l'errore e lo mostriamo così com'è scritto dalla API.
+        """
+        response = getattr(self.session, method)(
+            self._url(path), raise_exc=False, **kwargs)
+        if response.status_code >= 400:
+            raise exceptions.CommandError(
+                f"{_error_message(response)} (HTTP {response.status_code})")
+        return response.json()
+
     def _get(self, path, **params):
         # Togliamo i parametri non valorizzati: un ?name= vuoto non va mandato.
         clean = {k: v for k, v in params.items() if v is not None}
-        # La sessione di keystoneauth1 solleva da sola un errore sulle risposte
-        # 4xx/5xx, quindi qui ci fidiamo e leggiamo direttamente il JSON.
-        return self.session.get(self._url(path), params=clean).json()
+        return self._call("get", path, params=clean)
 
     # --- Scansioni -----------------------------------------------------------
 
@@ -66,8 +95,7 @@ class ReconClient:
                          severity=severity)["findings"]
 
     def create_scan(self, project_id):
-        return self.session.post(
-            self._url("/v1/scans"), json={"project_id": project_id}).json()
+        return self._call("post", "/v1/scans", json={"project_id": project_id})
 
     # --- Host ----------------------------------------------------------------
 

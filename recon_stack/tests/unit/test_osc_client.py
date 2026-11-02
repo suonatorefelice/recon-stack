@@ -4,32 +4,43 @@
 # "sessione" finta che registra le chiamate e restituisce JSON preparati, come
 # farebbe keystoneauth1 dopo aver parlato con l'API.
 
+import pytest
+from osc_lib import exceptions
+
 from recon_stack.osc import client as client_mod
 
 
 class _Response:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200, text=""):
         self._payload = payload
+        self.status_code = status_code
+        self.text = text
 
     def json(self):
+        if self._payload is None:
+            raise ValueError("corpo non JSON")
         return self._payload
 
 
 class _Session:
     """Sessione finta: ricorda l'ultima get/post e risponde con payload fissi."""
 
-    def __init__(self, payload=None):
-        self.payload = payload or {}
+    def __init__(self, payload=None, status_code=200, text=""):
+        self.payload = {} if payload is None and status_code < 400 else payload
+        self.status_code = status_code
+        self.text = text
         self.last_get = None
         self.last_post = None
 
-    def get(self, url, params=None):
+    def get(self, url, params=None, raise_exc=True):
         self.last_get = (url, params)
-        return _Response(self.payload)
+        self.raise_exc = raise_exc
+        return _Response(self.payload, self.status_code, self.text)
 
-    def post(self, url, json=None):
+    def post(self, url, json=None, raise_exc=True):
         self.last_post = (url, json)
-        return _Response(self.payload)
+        self.raise_exc = raise_exc
+        return _Response(self.payload, self.status_code, self.text)
 
     def get_endpoint(self, service_type=None, interface=None, region_name=None):
         self.endpoint_query = (service_type, interface, region_name)
@@ -85,3 +96,23 @@ def test_endpoint_preso_dal_catalogo_se_non_dato():
     assert session.endpoint_query == ("recon", "internal", None)
     # E l'ha usato togliendo la barra finale.
     assert session.last_get[0] == "http://recon.example:5238/v1/scans"
+
+
+def test_errore_della_api_mostra_il_suo_messaggio():
+    # Il limite di frequenza: la API risponde 429 con il motivo in italiano, e
+    # la CLI deve mostrarlo invece di "Unrecognized schema in response body".
+    session = _Session({"error": "troppo presto: riprova fra 42 secondi"},
+                       status_code=429)
+    client = client_mod.ReconClient(session, endpoint="http://recon:5238")
+    with pytest.raises(exceptions.CommandError,
+                       match=r"riprova fra 42 secondi \(HTTP 429\)"):
+        client.create_scan("p-1")
+    # Gli errori li leggiamo noi: la sessione non deve sollevarli da sola.
+    assert session.raise_exc is False
+
+
+def test_errore_non_json_usa_il_testo():
+    session = _Session(None, status_code=502, text="Bad Gateway")
+    client = client_mod.ReconClient(session, endpoint="http://recon:5238")
+    with pytest.raises(exceptions.CommandError, match="Bad Gateway"):
+        client.list_scans()
