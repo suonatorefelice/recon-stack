@@ -41,6 +41,10 @@ SECGROUP=recon-demo-sg
 EXTERNAL_NET=public          # la rete esterna standard di DevStack
 IMAGE_HINT=cirros            # pezzo del nome dell'immagine di prova
 SERVERS=(recon-demo-web recon-demo-db)
+# RAM minima del flavor delle VM. Su x86 cirros parte anche con 128 MB, ma su
+# ARM (aarch64) si avvia tramite UEFI e GRUB, e sotto i 256 MB GRUB si ferma
+# con "error: out of memory" (visto nel primo test su DevStack con Mac M1).
+MIN_RAM_MB=256
 
 # Controlliamo che le credenziali admin siano caricate: senza OS_AUTH_URL non
 # possiamo poi autenticarci come l'utente demo per creare le VM.
@@ -122,9 +126,13 @@ if [[ -z "$IMAGE" ]]; then
   echo "ERRORE: nessuna immagine '$IMAGE_HINT' trovata su questo DevStack." >&2
   exit 1
 fi
-# Il flavor con meno RAM: cirros gira anche con pochissima memoria.
+# Il flavor più piccolo con almeno MIN_RAM_MB di memoria.
 FLAVOR=$(openstack flavor list -f value -c Name -c RAM \
-         | sort -k2 -n | head -1 | awk '{print $1}')
+         | awk -v min="$MIN_RAM_MB" '$2 >= min' | sort -k2 -n | head -1 | awk '{print $1}')
+if [[ -z "$FLAVOR" ]]; then
+  echo "ERRORE: nessun flavor con almeno $MIN_RAM_MB MB di RAM." >&2
+  exit 1
+fi
 echo "   immagine: $IMAGE   flavor: $FLAVOR"
 
 for name in "${SERVERS[@]}"; do
