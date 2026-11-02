@@ -60,10 +60,18 @@ def live_hosts_xml(namespace, targets):
     Opzioni usate:
       -sn   solo scoperta degli host (nessun esame delle porte);
       -n    non risolvere i nomi DNS (più veloce e senza traffico extra);
+      --disable-arp-ping
+            non usare ARP per decidere se un host è acceso. Nella stessa rete
+            nmap userebbe ARP, ma con OVN le risposte ARP le dà OVN stesso al
+            posto delle VM, perché conosce già i loro indirizzi: una VM spenta
+            risultava "accesa" (trovato nel test su DevStack). Senza ARP nmap
+            usa le sonde IP (ping ICMP e pacchetti TCP), a cui risponde solo la
+            VM vera. Limite accettato: una VM accesa il cui security group
+            scarta tutte quelle sonde risulta assente;
       -oX - scrive il risultato in XML sullo standard output.
     """
-    command = [*_namespace_prefix(namespace), NMAP, "-sn", "-n", "-oX", "-",
-               *targets]
+    command = [*_namespace_prefix(namespace), NMAP, "-sn", "-n",
+               "--disable-arp-ping", "-oX", "-", *targets]
     stdout, _stderr = processutils.execute(*command)
     return stdout
 

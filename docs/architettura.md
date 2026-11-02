@@ -88,8 +88,11 @@ Il servizio si installa come plugin DevStack ([0009](adr/0009-plugin-devstack.md
 | `unstack` | ferma i due processi |
 | `clean` | rimuove configurazione e dati |
 
-## Punti da verificare su DevStack
+## Verifiche su DevStack
 
-- Il driver di rete in uso (OVN od OVS) e quindi i nomi delle namespace ([0006](adr/0006-vista-interna-namespace.md)).
-- Come i security group delle VM trattano il traffico della vista interna: decide cosa la scansione può vedere, e quindi come si riconosce un servizio latente.
-- Che il nodo DevStack raggiunga la rete `public` dalla namespace radice: è ciò che rende possibile la vista esterna sui floating IP ([0011](adr/0011-esposizione-e-segnalazioni.md)).
+Primo test completo il 2 novembre 2026, su DevStack (Ubuntu 24.04 aarch64 in VMware Fusion su Mac M1 Pro, driver di rete OVN), con il progetto creato da `demo/setup_demo.sh`.
+
+- **Namespace** ([0006](adr/0006-vista-interna-namespace.md)): con OVN c'è una namespace `ovnmeta-<id rete>` per ogni rete con VM, e da lì la scansione raggiunge le VM del progetto. Verificato.
+- **Vista esterna** ([0011](adr/0011-esposizione-e-segnalazioni.md)): dalla namespace radice del nodo il floating IP è raggiungibile e la porta 22 risponde. Verificato.
+- **ARP e OVN**: nella stessa rete nmap, di norma, decide se un host è acceso con una richiesta ARP. OVN però risponde alle richieste ARP al posto delle VM, perché ne conosce già gli indirizzi: una VM spenta risultava accesa. La scoperta degli host usa quindi `--disable-arp-ping` (sonde ICMP e TCP, a cui risponde solo la VM vera). Limite accettato: una VM accesa il cui security group scarta tutte le sonde risulta assente.
+- **Security group e vista interna**: il traffico dalla namespace verso le VM passa dalle regole del security group (la porta 22, permessa, risponde; le porte 3306 e 8080, permesse ma senza servizio, risultano chiuse). Resta da provare il caso di un servizio in ascolto su una porta che il security group blocca, cioè come si presenta un servizio latente.
