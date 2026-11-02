@@ -2,8 +2,10 @@
 #
 # Trasforma i risultati di una scansione già fatta (host, servizi, segnalazioni)
 # in un report HTML con la mappa della topologia, più una versione con redaction
-# da condividere. Non esegue scansioni e non tocca OpenStack: legge solo dal
-# database, quindi si può lanciare anche dove non c'è OpenStack.
+# da condividere. Non esegue scansioni: legge dal database. OpenStack serve solo
+# per tradurre il nome del progetto (--project recon-demo) nel suo id; se non è
+# raggiungibile, il valore di --project si usa direttamente come id, così il
+# report si genera anche dove c'è solo il database.
 #
 # Uso (sul nodo DevStack, o ovunque ci sia il database della scansione):
 #   recon-stack-report --scan <id> --output /tmp/report
@@ -19,8 +21,31 @@ from recon_stack import conf
 from recon_stack.db import api as db
 from recon_stack.db import models
 from recon_stack.report import render
+from recon_stack.scanner import cloud
 
 LOG = logging.getLogger(__name__)
+
+
+def _project_id(name_or_id):
+    """Id del progetto da --project, che può essere un nome o un id.
+
+    Nel database le scansioni sono legate all'id del progetto. Nella prima
+    versione il nome veniva cercato come se fosse un id e il comando non
+    trovava mai niente (trovato nel test su DevStack): ora lo risolviamo con
+    Keystone, come fanno recon-stack-scan e i comandi "openstack recon".
+    """
+    try:
+        project = cloud.connect().identity.find_project(
+            name_or_id, ignore_missing=True)
+    except Exception:
+        LOG.warning("OpenStack non raggiungibile: uso '%s' come id del progetto",
+                    name_or_id)
+        return name_or_id
+    if project is None:
+        LOG.warning("progetto '%s' non trovato in Keystone: lo uso come id",
+                    name_or_id)
+        return name_or_id
+    return project.id
 
 
 def main(argv=None):
@@ -32,7 +57,7 @@ def main(argv=None):
     parser.add_argument("--scan", help="Id della scansione da riportare.")
     parser.add_argument("--project",
                         help="Se non si dà --scan, prende l'ultima scansione "
-                             "completata di questo progetto (id).")
+                             "completata di questo progetto (nome o id).")
     parser.add_argument("--output", default=".",
                         help="Cartella dove scrivere i file (default: corrente).")
     parser.add_argument("--redacted", action="store_true",
@@ -44,7 +69,8 @@ def main(argv=None):
 
     scan_id = args.scan
     if not scan_id:
-        scan = db.get_latest_scan(project_id=args.project,
+        project_id = _project_id(args.project) if args.project else None
+        scan = db.get_latest_scan(project_id=project_id,
                                   status=models.SCAN_DONE)
         if scan is None:
             LOG.error("nessuna scansione completata da riportare")

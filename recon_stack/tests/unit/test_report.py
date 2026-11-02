@@ -156,3 +156,41 @@ def test_comando_report_scrive_i_file(database, tmp_path, monkeypatch, capsys):
 def test_comando_report_senza_scansioni(database, capsys):
     from recon_stack.cmd import report as cmd_report
     assert cmd_report.main([]) == 1
+
+
+def test_comando_report_accetta_il_nome_del_progetto(database, tmp_path,
+                                                    monkeypatch, capsys):
+    import types
+    from recon_stack.cmd import report as cmd_report
+
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+
+    class _Identity:
+        def find_project(self, name_or_id, ignore_missing=True):
+            if name_or_id == "recon-demo":
+                return types.SimpleNamespace(id="progetto-1")
+            return None
+
+    monkeypatch.setattr(cmd_report.cloud, "connect",
+                        lambda: types.SimpleNamespace(identity=_Identity()))
+    out_dir = tmp_path / "report"
+    assert cmd_report.main(["--project", "recon-demo",
+                            "--output", str(out_dir)]) == 0
+    assert scan.id in capsys.readouterr().out
+
+
+def test_comando_report_senza_openstack_usa_il_valore_come_id(
+        database, tmp_path, monkeypatch, capsys):
+    from recon_stack.cmd import report as cmd_report
+
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+
+    def no_cloud():
+        raise RuntimeError("niente OpenStack qui")
+
+    monkeypatch.setattr(cmd_report.cloud, "connect", no_cloud)
+    assert cmd_report.main(["--project", "progetto-1",
+                            "--output", str(tmp_path / "r")]) == 0
+    assert scan.id in capsys.readouterr().out
