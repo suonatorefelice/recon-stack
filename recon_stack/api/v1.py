@@ -99,6 +99,9 @@ def _service_dict(service):
     return {
         "id": service.id,
         "host_id": service.host_id,
+        # L'IP dell'host, così chi cerca un servizio vede subito dove sta
+        # senza dover chiedere l'host a parte.
+        "ip_address": service.host.ip_address,
         "port_number": service.port_number,
         "protocol": service.protocol,
         "name": service.name,

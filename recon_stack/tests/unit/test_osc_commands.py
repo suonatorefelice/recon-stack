@@ -5,6 +5,10 @@
 # è un client finto: così proviamo la trasformazione dei dati senza API né rete.
 
 import argparse
+import types
+
+import pytest
+from osc_lib import exceptions
 
 from recon_stack.osc import commands
 
@@ -28,8 +32,9 @@ class _FakeClient:
 
     def list_services(self, project_id=None, scan_id=None, name=None):
         self.calls.append(("list_services", project_id, scan_id, name))
-        return [{"host_id": "h-1", "port_number": 22, "protocol": "tcp",
-                 "name": "ssh", "product": "OpenSSH", "version": "8.9p1"}]
+        return [{"host_id": "h-1", "ip_address": "10.0.0.5", "port_number": 22,
+                 "protocol": "tcp", "name": "ssh", "product": "OpenSSH",
+                 "version": "8.9p1", "view": "internal"}]
 
     def list_scans(self, project_id=None, status=None):
         self.calls.append(("list_scans", project_id, status))
@@ -59,9 +64,21 @@ class _FakeClient:
                  "message": "ssh aperto a tutti"}]
 
 
+class _FakeIdentity:
+    """Keystone finto: conosce solo il progetto recon-demo, con id p-1."""
+
+    def find_project(self, name_or_id, ignore_missing=True):
+        if name_or_id in ("recon-demo", "p-1"):
+            return types.SimpleNamespace(id="p-1", name="recon-demo")
+        return None
+
+
 class _ClientManager:
     def __init__(self, recon):
         self.recon = recon
+        # La connessione openstacksdk che la CLI dà ai plugin: la usiamo per
+        # risolvere --project da nome a id.
+        self.sdk_connection = types.SimpleNamespace(identity=_FakeIdentity())
 
 
 class _App:
@@ -94,7 +111,7 @@ def test_service_list():
     (headers, rows), client = _run(
         commands.ListService, project=None, scan=None, name="ssh")
     assert client.calls[0] == ("list_services", None, None, "ssh")
-    assert rows == [("h-1", 22, "tcp", "ssh", "OpenSSH", "8.9p1")]
+    assert rows == [("10.0.0.5", 22, "tcp", "ssh", "OpenSSH", "8.9p1", "internal")]
 
 
 def test_scan_list():
@@ -121,3 +138,27 @@ def test_scan_exposure_elenca_le_segnalazioni():
     assert client.calls[0] == ("get_scan_exposure", "s-9", None)
     assert rows == [("high", "overexposed", "10.0.0.5", 22,
                      "ssh aperto a tutti")]
+
+
+def test_project_per_nome_diventa_id():
+    # Chi usa la CLI scrive il nome del progetto; alla API deve arrivare l'id.
+    (_, _), client = _run(
+        commands.ListHost, project="recon-demo", scan=None, classification=None)
+    assert client.calls[0] == ("list_hosts", "p-1", None, None)
+
+
+def test_project_inesistente_da_errore_chiaro():
+    with pytest.raises(exceptions.CommandError, match="non trovato"):
+        _run(commands.ListHost, project="non-esiste", scan=None,
+             classification=None)
+
+
+def test_scan_start_accetta_il_nome_del_progetto():
+    (_, _), client = _run(commands.StartScan, project="recon-demo")
+    assert client.calls[0] == ("create_scan", "p-1")
+
+
+def test_servizio_della_vista_esterna_e_indicato():
+    servizio = {"port_number": 22, "protocol": "tcp", "name": "ssh",
+                "product": None, "version": None, "view": "external"}
+    assert commands._format_service(servizio) == "22/tcp ssh (vista esterna)"

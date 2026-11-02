@@ -228,7 +228,11 @@ def get_services(scan_id=None, host_id=None, name=None):
     - name: solo i servizi con quel nome (per la ricerca GET /v1/services?name=).
     I filtri si combinano; senza filtri restituisce tutti i servizi.
     """
-    query = sqlalchemy.select(models.Service)
+    # selectinload carica anche l'host di ogni servizio nella stessa sessione:
+    # serve a chi deve mostrare l'IP del servizio (API /v1/services) dopo che
+    # la sessione è chiusa, quando SQLAlchemy non potrebbe più leggerlo.
+    query = sqlalchemy.select(models.Service).options(
+        orm.selectinload(models.Service.host))
     if scan_id is not None:
         query = (query
                  .join(models.Host, models.Service.host_id == models.Host.id)

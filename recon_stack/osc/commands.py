@@ -12,11 +12,32 @@
 
 from cliff import lister
 from cliff import show
+from osc_lib import exceptions
 
 
 def _client(command):
     """Il ReconClient esposto dal plugin (osc/plugin.py)."""
     return command.app.client_manager.recon
+
+
+def _project_id(command, name_or_id):
+    """Id del progetto indicato con --project, che può essere un nome o un id.
+
+    La API lavora con gli id dei progetti; chi usa la riga di comando scrive di
+    solito il nome (es. recon-demo). Come gli altri comandi "openstack", lo
+    risolviamo con Keystone tramite la connessione openstacksdk che la CLI
+    mette a disposizione dei plugin (client_manager.sdk_connection).
+    Prima di questa funzione il nome arrivava tale e quale alla API, che non
+    trovava niente: "host list --project recon-demo" era vuoto (trovato nel
+    test su DevStack).
+    """
+    if name_or_id is None:
+        return None
+    identity = command.app.client_manager.sdk_connection.identity
+    project = identity.find_project(name_or_id, ignore_missing=True)
+    if project is None:
+        raise exceptions.CommandError(f"progetto '{name_or_id}' non trovato")
+    return project.id
 
 
 # --- Host --------------------------------------------------------------------
@@ -40,7 +61,7 @@ class ListHost(lister.Lister):
 
     def take_action(self, parsed_args):
         hosts = _client(self).list_hosts(
-            project_id=parsed_args.project, scan_id=parsed_args.scan,
+            project_id=_project_id(self, parsed_args.project), scan_id=parsed_args.scan,
             classification=parsed_args.classification)
         rows = [tuple(h.get(c) for c in self.columns) for h in hosts]
         return self.headers, rows
@@ -86,10 +107,14 @@ class ListService(lister.Lister):
 
     def take_action(self, parsed_args):
         services = _client(self).list_services(
-            project_id=parsed_args.project, scan_id=parsed_args.scan,
+            project_id=_project_id(self, parsed_args.project), scan_id=parsed_args.scan,
             name=parsed_args.name)
-        headers = ("Host", "Porta", "Protocollo", "Servizio", "Prodotto", "Versione")
-        keys = ("host_id", "port_number", "protocol", "name", "product", "version")
+        # "Vista" distingue lo stesso servizio visto dall'interno della rete e
+        # dall'esterno sul floating IP: senza, le due righe sembrano doppioni.
+        headers = ("Indirizzo IP", "Porta", "Protocollo", "Servizio", "Prodotto",
+                   "Versione", "Vista")
+        keys = ("ip_address", "port_number", "protocol", "name", "product",
+                "version", "view")
         rows = [tuple(s.get(k) for k in keys) for s in services]
         return headers, rows
 
@@ -112,7 +137,7 @@ class ListScan(lister.Lister):
 
     def take_action(self, parsed_args):
         scans = _client(self).list_scans(
-            project_id=parsed_args.project, status=parsed_args.status)
+            project_id=_project_id(self, parsed_args.project), status=parsed_args.status)
         rows = [tuple(s.get(c) for c in self.columns) for s in scans]
         return self.headers, rows
 
@@ -182,20 +207,24 @@ class StartScan(show.ShowOne):
     def get_parser(self, prog_name):
         parser = super().get_parser(prog_name)
         parser.add_argument("--project", metavar="<progetto>", required=True,
-                            help="Id del progetto da scansionare.")
+                            help="Nome o id del progetto da scansionare.")
         return parser
 
     def take_action(self, parsed_args):
-        return _scan_show(_client(self).create_scan(parsed_args.project))
+        return _scan_show(_client(self).create_scan(
+            _project_id(self, parsed_args.project)))
 
 
 # --- Formattazione condivisa -------------------------------------------------
 
 def _format_service(service):
-    """Un servizio in una riga, es. '22/tcp ssh OpenSSH 8.9p1'."""
+    """Un servizio in una riga, es. '22/tcp ssh OpenSSH 8.9p1 (vista esterna)'."""
     pezzi = (service.get("name"), service.get("product"), service.get("version"))
     descr = " ".join(p for p in pezzi if p)
-    return f"{service.get('port_number')}/{service.get('protocol')} {descr}".rstrip()
+    line = f"{service.get('port_number')}/{service.get('protocol')} {descr}".rstrip()
+    if service.get("view") == "external":
+        line += " (vista esterna)"
+    return line
 
 
 def _format_diff_service(service):

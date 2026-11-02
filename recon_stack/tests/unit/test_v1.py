@@ -240,6 +240,9 @@ def test_ricerca_servizi_per_nome(client):
     assert len(services) == 1
     assert services[0]["name"] == "ssh"
     assert services[0]["product"] == "OpenSSH"
+    # L'IP dell'host è incluso, così il servizio si localizza senza chiedere
+    # l'host a parte.
+    assert services[0]["ip_address"] == "10.10.10.5"
 
 
 def test_elenco_servizi_del_catalogo(client):
