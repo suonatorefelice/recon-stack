@@ -157,14 +157,31 @@ fermando un servizio su una VM demo, il diff lo mostra.
 ### Esposizione (step 11)
 
 Il confronto fra i servizi trovati e i security group produce delle
-**segnalazioni** (regola inutile, servizio latente, esposizione eccessiva, host
-non censito, floating IP inutile). Il progetto demo contiene regole volutamente
-sbagliate, che devono comparire qui:
+**segnalazioni**: esposizione eccessiva, servizio latente, regola inutile, host
+non censito, porta senza port security, raggiungibile da Internet, floating IP
+inutile. Il progetto demo è costruito per farle comparire:
+
+| Caso | Dove | Segnalazione attesa |
+| --- | --- | --- |
+| SSH aperto a `0.0.0.0/0` | `recon-demo-web` | `overexposed` (high) |
+| servizio sulla 9090, porta non aperta dal security group | `recon-demo-web` | `latent_service` (medium) |
+| regole 3306 e 8080 senza servizio | `recon-demo-web` | `useless_rule` (low) |
+| SSH sul floating IP | `recon-demo-web` | `externally_reachable` (info) |
+| secondo indirizzo `10.10.10.250`, che Neutron non conosce | `recon-demo-db` | `unknown_exposed` (high) |
+| port security disattivata | `recon-demo-db` | `no_port_security` (high) |
 
 ```console
 $ openstack recon scan exposure <id-scansione>
 $ openstack recon scan exposure <id-scansione> --severity high
 ```
+
+Il servizio latente si vede solo perché il security group della demo contiene la
+**regola dello scanner**, che apre le porte al solo indirizzo da cui parte la
+scansione: senza, il security group blocca anche lo scanner
+([0012](docs/adr/0012-regola-dello-scanner.md)).
+
+Per ripartire da zero: `bash demo/teardown_demo.sh` cancella il progetto demo,
+poi `bash demo/setup_demo.sh` lo ricrea.
 
 ### Report e mappa (step 12)
 
