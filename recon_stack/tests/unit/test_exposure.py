@@ -331,3 +331,16 @@ def test_una_regola_ristretta_a_un_altro_indirizzo_non_e_dello_scanner():
     findings = exposure.build_findings(
         [host], [_service("h1", 9090, name=None)], inv)
     assert models.FINDING_LATENT_SERVICE not in _types(findings)
+
+
+def test_porte_di_infrastruttura_senza_port_security_non_sono_segnalate():
+    # Router e metadati in Neutron non hanno mai la port security: segnalarli
+    # sarebbe un falso positivo (visto nel test su DevStack).
+    hosts = [_host("r", "10.0.0.1"), _host("m", "10.0.0.2")]
+    inv = _inventory(ports=[
+        _port("10.0.0.1", [], device_owner="network:router_interface",
+              port_security=False),
+        _port("10.0.0.2", [], device_owner="network:distributed",
+              port_security=False),
+    ])
+    assert exposure.build_findings(hosts, [], inv) == []

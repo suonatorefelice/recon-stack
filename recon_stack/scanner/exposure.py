@@ -137,8 +137,13 @@ def build_findings(hosts, services, inventory):
     for port in inventory["ports"]:
         if port.security_group_ids:
             sg_ids_by_ip[port.ip_address] = json.loads(port.security_group_ids)
-        port_security_by_ip[port.ip_address] = getattr(
-            port, "port_security_enabled", None)
+        # Solo le porte delle VM (device_owner "compute:..."): le porte di
+        # infrastruttura (router, metadati, DHCP) in Neutron non hanno mai la
+        # port security, e segnalarle sarebbe un falso positivo (visto nel test
+        # su DevStack con il router .1 e la porta dei metadati .2).
+        if (getattr(port, "device_owner", None) or "").startswith("compute:"):
+            port_security_by_ip[port.ip_address] = getattr(
+                port, "port_security_enabled", None)
         if getattr(port, "device_owner", None) in SCANNER_PORT_OWNERS:
             scanner_ips.add(port.ip_address)
 
