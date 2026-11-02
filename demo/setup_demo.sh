@@ -42,9 +42,11 @@ EXTERNAL_NET=public          # la rete esterna standard di DevStack
 IMAGE_HINT=cirros            # pezzo del nome dell'immagine di prova
 SERVERS=(recon-demo-web recon-demo-db)
 # RAM minima del flavor delle VM. Su x86 cirros parte anche con 128 MB, ma su
-# ARM (aarch64) si avvia tramite UEFI e GRUB, e sotto i 256 MB GRUB si ferma
-# con "error: out of memory" (visto nel primo test su DevStack con Mac M1).
-MIN_RAM_MB=256
+# ARM (aarch64) si avvia tramite UEFI e GRUB: nel primo test su DevStack con
+# Mac M1, con 192 MB GRUB si fermava con "error: out of memory" e con 256 MB il
+# firmware andava in "Synchronous Exception" caricando il kernel; con 512 MB
+# cirros arriva al login in circa 100 secondi.
+MIN_RAM_MB=512
 
 # Controlliamo che le credenziali admin siano caricate: senza OS_AUTH_URL non
 # possiamo poi autenticarci come l'utente demo per creare le VM.
