@@ -13,3 +13,4 @@ dist/
 # ambienti di test
 .tox/
 .pytest_cache/
+.report-test/
