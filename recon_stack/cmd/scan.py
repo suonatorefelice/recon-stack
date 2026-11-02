@@ -58,20 +58,46 @@ def main(argv=None):
     for svc in db.get_services(scan.id):
         services_by_host.setdefault(svc.host_id, []).append(svc)
 
+    # Gli host censiti che non sono VM (router, DHCP, metadati di OVN) non hanno
+    # un nome: li etichettiamo con il ruolo della loro porta Neutron, letto
+    # dall'inventario della scansione (device_owner).
+    owner_by_ip = {p.ip_address: p.device_owner
+                   for p in db.get_inventory(scan.id)["ports"]}
+
     for label, value in (("censiti", models.HOST_KNOWN),
                          ("sconosciuti", models.HOST_UNKNOWN),
                          ("assenti", models.HOST_ABSENT)):
         hosts = db.get_hosts(scan.id, classification=value)
         print(f"  {label}: {len(hosts)}")
         for h in hosts:
-            name = h.server_name or h.classification
+            name = (h.server_name or _owner_label(owner_by_ip.get(h.ip_address))
+                    or h.classification)
             print(f"    - {h.ip_address} ({name})")
             for svc in sorted(services_by_host.get(h.id, []),
                               key=lambda s: s.port_number):
                 # Es. "22/tcp ssh OpenSSH 8.9p1"; i pezzi mancanti si saltano.
                 descr = " ".join(p for p in (svc.name, svc.product, svc.version) if p)
-                print(f"        {svc.port_number}/{svc.protocol} {descr}".rstrip())
+                # Lo stesso servizio può comparire due volte: dall'interno della
+                # rete e dall'esterno sul floating IP. Lo diciamo.
+                where = " (vista esterna)" if svc.view == models.VIEW_EXTERNAL else ""
+                print(f"        {svc.port_number}/{svc.protocol} {descr}".rstrip() + where)
     return 0
+
+
+# Nomi leggibili per i ruoli più comuni delle porte Neutron (device_owner).
+_OWNER_LABELS = {
+    "network:router_interface": "router",
+    "network:router_interface_distributed": "router",
+    "network:dhcp": "DHCP",
+    "network:distributed": "metadati OVN",
+}
+
+
+def _owner_label(device_owner):
+    """Etichetta di una porta Neutron che non è una VM, es. "router"."""
+    if not device_owner or device_owner.startswith("compute:"):
+        return None
+    return _OWNER_LABELS.get(device_owner, device_owner)
 
 
 if __name__ == "__main__":

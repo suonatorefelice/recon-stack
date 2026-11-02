@@ -285,3 +285,13 @@ def test_comando_scan(database, no_privsep, monkeypatch, capsys):
     assert "censiti: 2" in out
     assert "sconosciuti: 1" in out
     assert "assenti: 1" in out
+    # Il router non è una VM: viene etichettato con il ruolo della sua porta.
+    assert "10.10.10.1 (router)" in out
+
+
+def test_etichette_delle_porte_che_non_sono_vm():
+    from recon_stack.cmd import scan as cmd_scan
+    assert cmd_scan._owner_label("network:router_interface") == "router"
+    assert cmd_scan._owner_label("network:distributed") == "metadati OVN"
+    assert cmd_scan._owner_label("compute:nova") is None
+    assert cmd_scan._owner_label(None) is None
