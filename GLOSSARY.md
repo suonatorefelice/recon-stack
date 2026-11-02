@@ -22,8 +22,10 @@ Per una spiegazione discorsiva dei componenti OpenStack vedi [docs/concetti.md](
 | **Vista interna** | la scansione fatta dall'interno della rete del progetto, tramite un namespace di rete | recon-stack |
 | **Vista esterna** | la scansione dei floating IP fatta dalla rete `public`: ciò che vede chi sta fuori dal cloud | recon-stack |
 | **Servizio esposto** | servizio raggiungibile dalla vista esterna | recon-stack |
-| **Servizio latente** | servizio in ascolto ma bloccato dal security group: innocuo oggi, esposto il giorno in cui qualcuno apre la regola | recon-stack |
+| **Servizio latente** | servizio in ascolto ma bloccato dal security group: innocuo oggi, esposto il giorno in cui qualcuno apre la regola. Lo scanner lo vede solo se il security group ha la regola dello scanner ([0012](docs/adr/0012-regola-dello-scanner.md)) | recon-stack |
+| **Regola dello scanner** | regola di security group che apre le porte al solo indirizzo da cui parte la scansione (porta metadati OVN o DHCP); Recon-Stack la riconosce e la esclude dal calcolo dell'esposizione ([0012](docs/adr/0012-regola-dello-scanner.md)) | recon-stack |
 | **Regola inutile** | regola di security group che apre una porta su cui non c'è nessun servizio in ascolto: un buco pronto per il prossimo programma che userà quella porta | recon-stack |
+| **Port security disattivata** | porta Neutron su cui non si applica nessun security group: tutto il traffico della rete arriva alla VM. Recon-Stack la segnala come esposta | Neutron |
 | **Redaction** | la versione condivisibile del report, con indirizzi, nomi e identificativi sostituiti da pseudonimi coerenti | recon-stack |
 
 ## I componenti OpenStack e cosa ci prendiamo

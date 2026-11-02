@@ -15,3 +15,4 @@ Un ADR (*Architecture Decision Record*) registra una scelta di forma del progett
 | [0009](0009-plugin-devstack.md) | Plugin DevStack `recon-stack` |
 | [0010](0010-dashboard-plugin-horizon.md) | Dashboard come plugin di Horizon (supera la dashboard Jinja2) |
 | [0011](0011-esposizione-e-segnalazioni.md) | Esposizione: vista esterna dei floating IP e segnalazioni confrontate con i security group |
+| [0012](0012-regola-dello-scanner.md) | Regola dello scanner nel security group per vedere i servizi latenti |
