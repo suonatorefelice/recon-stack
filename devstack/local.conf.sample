@@ -17,11 +17,18 @@ enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
 
 # --- Solo per una VM su Mac con chip Apple M1/M2 (architettura ARM) ---------
 # L'M1 non permette la virtualizzazione annidata: le VM create da OpenStack
-# vengono emulate via software (qemu) invece che accelerate (kvm). DevStack
-# passerebbe a qemu da solo, ma il modello di CPU predefinito (Nehalem) è un
-# processore x86 e su ARM non esiste: va indicato un modello ARM.
-# L'immagine CirrOS per ARM (aarch64) viene scelta in automatico.
-# Valori da verificare sulla VM al primo stack.sh.
+# vengono emulate via software (qemu) invece che accelerate (kvm).
 LIBVIRT_TYPE=qemu
-LIBVIRT_CPU_MODE=custom
-LIBVIRT_CPU_MODEL=cortex-a57
+# L'immagine CirrOS per ARM (aarch64) viene scelta in automatico.
+#
+# Su aarch64 DevStack imposta sempre cpu_mode = host-passthrough, ignorando
+# LIBVIRT_CPU_MODE; ma con qemu emulato quella modalità non è supportata e le
+# VM non partono ("CPU mode 'host-passthrough' ... is not supported by
+# hypervisor"). La sezione qui sotto corregge il file di nova-compute dopo che
+# DevStack l'ha scritto, con un modello di CPU ARM che qemu sa emulare.
+# Verificato su Ubuntu 24.04 aarch64 in VMware Fusion su M1 Pro.
+
+[[post-config|$NOVA_CPU_CONF]]
+[libvirt]
+cpu_mode = custom
+cpu_models = cortex-a57
