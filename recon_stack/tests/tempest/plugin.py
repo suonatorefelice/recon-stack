@@ -13,7 +13,10 @@
 import os
 
 from tempest import config
-from tempest.test_discovery import plugins
+# Il modulo si chiama test_discover, senza la "y": la prima versione importava
+# test_discovery e tempest non caricava il plugin (trovato su DevStack; sul Mac
+# tempest non è installato e l'errore non si vedeva).
+from tempest.test_discover import plugins
 
 from recon_stack.tests.tempest import config as recon_config
 
