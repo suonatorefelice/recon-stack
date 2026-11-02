@@ -21,7 +21,9 @@
 #   bash demo/setup_demo.sh
 #
 # Lo script è ripetibile: se una risorsa esiste già, la riusa invece di
-# duplicarla (opzione --or-show dei comandi "openstack ... create").
+# duplicarla. Per progetto e utente c'è l'opzione --or-show di Keystone; per
+# reti, subnet, router e security group (Neutron) quell'opzione non esiste, e
+# controlliamo a mano con la funzione exists_in_project.
 
 # -e: esce al primo errore; -u: errore se si usa una variabile non impostata;
 # -o pipefail: un errore in mezzo a una pipe non passa inosservato.
@@ -48,6 +50,14 @@ if [[ -z "${OS_AUTH_URL:-}" ]]; then
   exit 1
 fi
 
+# Vero se nel progetto demo esiste già una risorsa Neutron con quel nome.
+# Uso: exists_in_project <tipo> <nome>, es. exists_in_project network recon-demo-net
+# Filtriamo per progetto perché l'admin vede le risorse di tutti i progetti.
+exists_in_project() {
+  # $1 senza virgolette apposta: "security group" deve diventare due parole.
+  openstack $1 list --project "$PROJECT" -f value -c Name | grep -qx "$2"
+}
+
 echo "== 1/6 progetto, utente e ruoli =="
 # --or-show: se esiste già, mostra quella esistente invece di dare errore.
 openstack project create --or-show "$PROJECT" >/dev/null
@@ -57,19 +67,23 @@ openstack user create --or-show --project "$PROJECT" \
 openstack role add --project "$PROJECT" --user "$USER_NAME" member || true
 
 echo "== 2/6 rete e subnet =="
-openstack network create --or-show --project "$PROJECT" "$NET" >/dev/null
-openstack subnet create --or-show --project "$PROJECT" \
-  --network "$NET" --subnet-range "$SUBNET_RANGE" "$SUBNET" >/dev/null
+exists_in_project network "$NET" ||
+  openstack network create --project "$PROJECT" "$NET" >/dev/null
+exists_in_project subnet "$SUBNET" ||
+  openstack subnet create --project "$PROJECT" \
+    --network "$NET" --subnet-range "$SUBNET_RANGE" "$SUBNET" >/dev/null
 
 echo "== 3/6 router verso la rete esterna '$EXTERNAL_NET' =="
-openstack router create --or-show --project "$PROJECT" "$ROUTER" >/dev/null
+exists_in_project router "$ROUTER" ||
+  openstack router create --project "$PROJECT" "$ROUTER" >/dev/null
 # Collega il router alla rete esterna (gateway) e alla subnet privata.
 # "|| true" perché ripetere questi comandi su un router già collegato dà errore.
 openstack router set --external-gateway "$EXTERNAL_NET" "$ROUTER" || true
 openstack router add subnet "$ROUTER" "$SUBNET" 2>/dev/null || true
 
 echo "== 4/6 security group (SSH e ping, più due regole volutamente sbagliate) =="
-openstack security group create --or-show --project "$PROJECT" "$SECGROUP" >/dev/null
+exists_in_project "security group" "$SECGROUP" ||
+  openstack security group create --project "$PROJECT" "$SECGROUP" >/dev/null
 # Regole in ingresso: TCP 22 (SSH) e ICMP (ping) da qualunque indirizzo.
 # "|| true" perché ricreare una regola uguale dà errore.
 # La 22 da 0.0.0.0/0 è una vera esposizione: cirros ha SSH in ascolto, quindi
