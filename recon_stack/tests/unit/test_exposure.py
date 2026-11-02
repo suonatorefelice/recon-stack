@@ -30,8 +30,9 @@ def _service(host_id, port, name="ssh", protocol="tcp", view=models.VIEW_INTERNA
                 name=name, view=view)
 
 
-def _port(ip, sg_ids):
-    return _obj(ip_address=ip, security_group_ids=json.dumps(sg_ids))
+def _port(ip, sg_ids, device_owner="compute:nova", port_security=True):
+    return _obj(ip_address=ip, security_group_ids=json.dumps(sg_ids),
+                device_owner=device_owner, port_security_enabled=port_security)
 
 
 def _rule(sg_id, port_min=None, port_max=None, protocol="tcp",
@@ -260,3 +261,73 @@ def test_compute_and_save_e_ordinamento_per_gravita(db):
     assert [f.finding_type for f in findings] == [
         models.FINDING_OVEREXPOSED, models.FINDING_USELESS_RULE]
     assert findings[0].severity == models.SEVERITY_HIGH
+
+
+# --- Port security disattivata ----------------------------------------------
+
+def test_port_security_disattivata_e_esposta_non_latente():
+    # Trovato nel test su DevStack: una porta senza port security non ha
+    # security group, e i suoi servizi venivano segnalati come latenti.
+    host = _host("h1", "10.0.0.5")
+    services = [_service("h1", 22)]
+    inv = _inventory(ports=[_port("10.0.0.5", [], port_security=False)])
+
+    findings = exposure.build_findings([host], services, inv)
+    assert _types(findings) == {models.FINDING_NO_PORT_SECURITY}
+    assert findings[0]["severity"] == models.SEVERITY_HIGH
+    assert "22/tcp" in findings[0]["message"]
+
+
+def test_port_security_sconosciuta_si_comporta_come_prima():
+    # Scansioni salvate prima della migrazione 0005: il dato manca (None) e il
+    # confronto con le regole resta quello di sempre.
+    host = _host("h1", "10.0.0.5")
+    inv = _inventory(ports=[_port("10.0.0.5", ["sg-1"], port_security=None)],
+                     rules=[_rule("sg-1", 22, 22)])
+    findings = exposure.build_findings([host], [_service("h1", 22)], inv)
+    assert models.FINDING_OVEREXPOSED in _types(findings)
+    assert models.FINDING_NO_PORT_SECURITY not in _types(findings)
+
+
+# --- Regola dello scanner (ADR 0012) ----------------------------------------
+
+def _inventory_con_scanner(rules):
+    return _inventory(
+        ports=[_port("10.0.0.5", ["sg-1"]),
+               # La porta dei metadati di OVN: la sorgente dello scanner.
+               _port("10.0.0.2", [], device_owner="network:distributed",
+                     port_security=False)],
+        rules=rules)
+
+
+def test_servizio_coperto_solo_dalla_regola_dello_scanner_e_latente():
+    host = _host("h1", "10.0.0.5")
+    inv = _inventory_con_scanner([
+        _rule("sg-1", 22, 22),                                   # ssh dichiarato
+        _rule("sg-1", None, None, remote="10.0.0.2/32"),         # regola scanner
+    ])
+    services = [_service("h1", 22), _service("h1", 9090, name=None)]
+
+    findings = exposure.build_findings([host], services, inv)
+    latenti = [f for f in findings
+               if f["finding_type"] == models.FINDING_LATENT_SERVICE]
+    # La 9090 la permette solo la regola dello scanner: è latente.
+    assert [f["port_number"] for f in latenti] == [9090]
+
+
+def test_la_regola_dello_scanner_non_e_una_regola_inutile():
+    host = _host("h1", "10.0.0.5")
+    inv = _inventory_con_scanner([
+        _rule("sg-1", 1, 65535, remote="10.0.0.2/32"),  # tutte le porte, solo scanner
+    ])
+    findings = exposure.build_findings([host], [_service("h1", 22)], inv)
+    assert models.FINDING_USELESS_RULE not in _types(findings)
+
+
+def test_una_regola_ristretta_a_un_altro_indirizzo_non_e_dello_scanner():
+    # Un /32 verso un indirizzo qualunque è una regola normale: copre il servizio.
+    host = _host("h1", "10.0.0.5")
+    inv = _inventory_con_scanner([_rule("sg-1", 9090, 9090, remote="10.0.0.99/32")])
+    findings = exposure.build_findings(
+        [host], [_service("h1", 9090, name=None)], inv)
+    assert models.FINDING_LATENT_SERVICE not in _types(findings)

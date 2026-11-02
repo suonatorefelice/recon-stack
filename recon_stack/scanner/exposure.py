@@ -20,7 +20,19 @@
 #     censito internamente;
 #   - host non censito esposto: un host che risponde senza corrispondere a nessuna
 #     risorsa Neutron, con porte aperte;
-#   - floating IP inutile: un indirizzo pubblico senza nessun servizio dietro.
+#   - floating IP inutile: un indirizzo pubblico senza nessun servizio dietro;
+#   - port security disattivata: la porta di una VM non è protetta da nessun
+#     security group, quindi ogni servizio è raggiungibile da tutta la rete.
+#
+# La regola dello scanner (ADR 0012). Il security group filtra anche il traffico
+# che parte dalla network namespace da cui scansioniamo (verificato su
+# DevStack): un servizio in ascolto su una porta bloccata risulta "filtered" e
+# non si vedrebbe mai. Per vedere i servizi latenti l'admin può aggiungere una
+# regola che apre le porte al solo indirizzo dello scanner (la porta dei
+# metadati di OVN, o del DHCP con OVS, a cui appartiene la namespace). Quella
+# regola la riconosciamo e la mettiamo da parte: non conta come "previsione" di
+# un servizio (altrimenti nessun servizio risulterebbe mai latente) e non viene
+# segnalata come regola inutile.
 #
 # Le funzioni di calcolo (build_findings) non toccano il database: ricevono liste
 # di oggetti e si provano da sole. findings_for_scan le collega al database.
@@ -35,6 +47,19 @@ LOG = logging.getLogger(__name__)
 
 # Prefissi che indicano "qualunque indirizzo" in una regola di security group.
 ANY_ADDRESS = ("0.0.0.0/0", "::/0")
+
+# Ruoli delle porte Neutron a cui appartiene la namespace da cui parte la
+# scansione interna: il loro indirizzo è la sorgente dello scanner (ADR 0006).
+SCANNER_PORT_OWNERS = ("network:distributed",  # metadati di OVN (ovnmeta-)
+                       "network:dhcp")         # DHCP con OVS (qdhcp-)
+
+
+def _is_scanner_rule(rule, scanner_ips):
+    """La regola apre il traffico al solo indirizzo dello scanner? (ADR 0012)"""
+    if rule.remote_group_id or not rule.remote_ip_prefix:
+        return False
+    return rule.remote_ip_prefix in {f"{ip}/32" for ip in scanner_ips} | {
+        f"{ip}/128" for ip in scanner_ips}
 
 
 def _rule_source_is_anywhere(rule):
@@ -104,9 +129,18 @@ def build_findings(hosts, services, inventory):
 
     # Security group applicati a ogni indirizzo, dalle porte dell'inventario.
     sg_ids_by_ip = {}
+    # Port security di ogni indirizzo (None se non si sa, ad esempio per le
+    # scansioni salvate prima della migrazione 0005).
+    port_security_by_ip = {}
+    # Indirizzi da cui parte lo scanner (porte metadati/DHCP).
+    scanner_ips = set()
     for port in inventory["ports"]:
         if port.security_group_ids:
             sg_ids_by_ip[port.ip_address] = json.loads(port.security_group_ids)
+        port_security_by_ip[port.ip_address] = getattr(
+            port, "port_security_enabled", None)
+        if getattr(port, "device_owner", None) in SCANNER_PORT_OWNERS:
+            scanner_ips.add(port.ip_address)
 
     # Servizi raggruppati per host e per vista (interna / esterna).
     internal_by_host = {}
@@ -120,14 +154,16 @@ def build_findings(hosts, services, inventory):
     for host in hosts:
         findings.extend(_host_findings(
             host, internal_by_host.get(host.id, []),
-            sg_ids_by_ip.get(host.ip_address, []), rules_by_sg))
+            sg_ids_by_ip.get(host.ip_address, []), rules_by_sg,
+            port_security_by_ip.get(host.ip_address), scanner_ips))
 
     findings.extend(_external_findings(hosts, internal_by_host,
                                        external_by_host, inventory["floating_ips"]))
     return findings
 
 
-def _host_findings(host, internal_services, sg_ids, rules_by_sg):
+def _host_findings(host, internal_services, sg_ids, rules_by_sg,
+                   port_security=None, scanner_ips=frozenset()):
     """Segnalazioni che nascono dal confronto servizi/regole su un singolo host."""
     findings = []
 
@@ -149,8 +185,33 @@ def _host_findings(host, internal_services, sg_ids, rules_by_sg):
     if host.classification != models.HOST_KNOWN:
         return findings
 
-    ingress_rules = [r for sg in sg_ids for r in rules_by_sg.get(sg, [])
-                     if r.direction == models.DIRECTION_INGRESS]
+    # Port security disattivata: nessun security group protegge la porta, quindi
+    # il confronto con le regole non ha senso. Prima di questo controllo i suoi
+    # servizi venivano segnalati come "latenti" (nessuna regola li prevede),
+    # mentre sono il contrario: raggiungibili da tutta la rete (trovato nel test
+    # su DevStack).
+    if port_security is False:
+        if internal_services:
+            porte = ", ".join(sorted(
+                f"{s.port_number}/{s.protocol}" for s in internal_services))
+            dettaglio = f"i servizi in ascolto ({porte}) sono raggiungibili"
+        else:
+            dettaglio = "qualunque servizio verrà avviato sarà raggiungibile"
+        findings.append(_finding(
+            models.FINDING_NO_PORT_SECURITY, models.SEVERITY_HIGH,
+            f"La porta di {host.ip_address} ha la port security disattivata: "
+            f"nessun security group la protegge e {dettaglio} da qualunque "
+            f"indirizzo della rete.",
+            ip_address=host.ip_address))
+        return findings
+
+    ingress_rules = []
+    for sg in sg_ids:
+        for rule in rules_by_sg.get(sg, []):
+            # Le regole dello scanner (ADR 0012) restano fuori dal confronto.
+            if (rule.direction == models.DIRECTION_INGRESS
+                    and not _is_scanner_rule(rule, scanner_ips)):
+                ingress_rules.append(rule)
 
     # Per ogni servizio in ascolto: è aperto a tutti? è previsto da una regola?
     for svc in internal_services:
