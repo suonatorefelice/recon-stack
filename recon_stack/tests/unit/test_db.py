@@ -36,7 +36,7 @@ def test_le_migrazioni_creano_le_tabelle(db):
             "inventory_servers", "inventory_ports", "inventory_floating_ips",
             "inventory_security_groups", "inventory_sg_rules",
             "exposure_findings", "alembic_version"} <= set(tables)
-    assert migration.current_revision() == "0004"
+    assert migration.current_revision() == "0005"
 
 
 def test_modelli_e_migrazioni_descrivono_lo_stesso_schema(db):
@@ -59,7 +59,7 @@ def test_dbsync_si_puo_ripetere(db):
     # Il database è già aggiornato dalla fixture: rilanciare il comando non
     # deve dare errori né cambiare la revisione.
     dbsync.main([])
-    assert migration.current_revision() == "0004"
+    assert migration.current_revision() == "0005"
 
 
 # --- Operazioni sulle scansioni ---------------------------------------------

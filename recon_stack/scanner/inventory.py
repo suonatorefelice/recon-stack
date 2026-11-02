@@ -67,6 +67,9 @@ def collect(conn, project_id, scan_id):
                 device_owner=port.device_owner,
                 device_id=port.device_id,
                 security_group_ids=sg_ids_json,
+                # getattr con None: se il dato manca (estensione non attiva in
+                # Neutron, o porte finte nei test) vale "non si sa".
+                port_security_enabled=getattr(port, "is_port_security_enabled", None),
             ))
 
     floating_ips = [

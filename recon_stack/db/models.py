@@ -75,6 +75,7 @@ FINDING_EXTERNALLY_REACHABLE = "externally_reachable"  # confermato raggiungibil
 FINDING_UNKNOWN_EXPOSED = "unknown_exposed"      # host non censito con porte aperte
 FINDING_WASTED_FLOATING_IP = "wasted_floating_ip"  # floating IP senza servizi dietro
 FINDING_EXTERNAL_ONLY = "external_only"          # visto da fuori ma non censito internamente
+FINDING_NO_PORT_SECURITY = "no_port_security"  # porta senza port security: nessun firewall
 
 # Gravità di una segnalazione, dalla più alla meno urgente.
 SEVERITY_HIGH = "high"      # rischio concreto: va guardato subito
@@ -228,6 +229,10 @@ class InventoryPort(Base):
     # confrontare i servizi trovati con ciò che le regole permettono. Testo JSON
     # perché una porta può avere più security group e SQLite non ha un tipo lista.
     security_group_ids: Mapped[str | None] = mapped_column(Text)
+    # La port security della porta è attiva? Se è disattivata Neutron non le
+    # applica nessun security group: tutto il traffico della rete arriva alla
+    # VM (migrazione 0005). None per le scansioni precedenti alla migrazione.
+    port_security_enabled: Mapped[bool | None]
 
     scan: Mapped[Scan] = relationship(back_populates="ports")
 
