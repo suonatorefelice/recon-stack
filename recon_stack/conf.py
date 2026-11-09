@@ -178,3 +178,12 @@ def load(argv=None):
         level=logging.DEBUG if CONF.debug else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    # Le librerie di terze parti che usiamo (i client OpenStack, il loro
+    # trasporto HTTP, il caricamento dei plugin) a INFO/DEBUG stampano
+    # moltissimo: ogni richiesta HTTP, ogni token, ogni plugin trovato. Con
+    # debug = True sommergono il nostro output e il riepilogo della scansione
+    # diventa illeggibile. Le teniamo sempre a WARNING: così nel terminale si
+    # legge solo ciò che stampiamo noi (e i nostri log restano a DEBUG se serve).
+    for noisy in ("keystoneauth", "stevedore", "urllib3", "requests",
+                  "openstack", "keystonemiddleware", "oslo_policy"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
