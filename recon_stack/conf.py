@@ -185,5 +185,9 @@ def load(argv=None):
     # diventa illeggibile. Le teniamo sempre a WARNING: così nel terminale si
     # legge solo ciò che stampiamo noi (e i nostri log restano a DEBUG se serve).
     for noisy in ("keystoneauth", "stevedore", "urllib3", "requests",
-                  "openstack", "keystonemiddleware", "oslo_policy"):
+                  "openstack", "keystonemiddleware", "oslo_policy",
+                  # oslo_concurrency registra a DEBUG l'intero output dei comandi
+                  # esterni: lo scan di nmap diventa pagine di XML. oslo.privsep
+                  # registra i dettagli del demone privilegiato.
+                  "oslo_concurrency", "oslo.privsep", "oslo_privsep"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
