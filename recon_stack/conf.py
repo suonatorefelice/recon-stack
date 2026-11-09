@@ -187,7 +187,14 @@ def load(argv=None):
     for noisy in ("keystoneauth", "stevedore", "urllib3", "requests",
                   "openstack", "keystonemiddleware", "oslo_policy",
                   # oslo_concurrency registra a DEBUG l'intero output dei comandi
-                  # esterni: lo scan di nmap diventa pagine di XML. oslo.privsep
-                  # registra i dettagli del demone privilegiato.
-                  "oslo_concurrency", "oslo.privsep", "oslo_privsep"):
+                  # esterni: lo scan di nmap diventa pagine di XML.
+                  "oslo_concurrency"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
+    # Il demone privsep (ADR 0007) è un sottoprocesso separato: importando
+    # eventlet stampa sul suo stderr un lungo avviso di deprecazione che
+    # oslo.privsep ci rigira come log a livello WARNING, a ogni scansione. Il
+    # filtro sui warning del processo principale non può raggiungerlo, quindi
+    # alziamo la soglia di questo logger a ERROR: un problema vero del demone
+    # emerge comunque come errore e come "motivo" della scansione fallita.
+    for privsep_log in ("oslo.privsep", "oslo_privsep"):
+        logging.getLogger(privsep_log).setLevel(logging.ERROR)
