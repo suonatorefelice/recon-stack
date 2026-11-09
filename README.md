@@ -86,17 +86,21 @@ $ openstack catalog list        # compare il servizio recon-stack, tipo recon
 
 ### La demo, passo per passo
 
-Tutti i comandi si eseguono **sul nodo DevStack, come utente `stack`**, con le
-credenziali admin caricate. Apri così la sessione:
+Tutti i comandi si eseguono **sul nodo DevStack**. Carica una volta le
+credenziali admin, usando il **percorso completo** di `openrc` così funziona da
+qualunque cartella:
 
 ```console
-$ sudo su - stack
-$ cd /opt/stack/devstack
-$ source openrc admin admin
+$ source /opt/stack/devstack/openrc admin admin
 ```
+
+> Scrivi il percorso completo: `source openrc` da solo funziona **solo** se sei
+> dentro `/opt/stack/devstack`, altrimenti il file non viene trovato e i comandi
+> falliscono con *«Missing value auth-url required for auth plugin password»*.
 
 I comandi `recon-stack-*` non sono nel `PATH`: si richiamano con il percorso
 completo `/opt/stack/data/venv/bin/`. Il comando `openstack`, invece, è globale.
+La sola **scansione** richiede anche `sudo` (entra nelle network namespace).
 
 > **Dopo un riavvio a freddo della VM** il bridge della rete esterna (`br-ex`)
 > può restare spento: i floating IP diventano irraggiungibili e la scansione
@@ -121,6 +125,9 @@ volutamente sbagliate e la *regola dello scanner*) e due VM cirros:
 apre) e `recon-demo-db` (SSH più un **IP sconosciuto** `10.10.10.250` e la **port
 security disattivata**), più un floating IP sulla prima. Le VM impiegano
 ~2 minuti ad avviarsi: aspetta prima di scansionare.
+
+Che cosa crea di preciso, e quale segnalazione fa comparire ogni pezzo, è
+spiegato riga per riga in [docs/demo.md](docs/demo.md).
 
 #### 2. Verificare l'inventario (step 4)
 
@@ -273,6 +280,7 @@ DevStack vero si prova invece con i test tempest in
 | Documento | Contenuto |
 | --- | --- |
 | [Concetti](docs/concetti.md) | OpenStack, DevStack, plugin, nmap e namespace di rete spiegati da zero |
+| [Demo](docs/demo.md) | cosa crea `setup_demo.sh`, passo per passo, e la segnalazione che ogni pezzo fa comparire |
 | [Glossario](GLOSSARY.md) | i termini del dominio e dei componenti OpenStack |
 | [Architettura](docs/architettura.md) | componenti, confini, sequenza di una scansione, dati conservati |
 | [Decisioni](docs/adr/README.md) | le scelte di forma, con alternative scartate e fonti |
