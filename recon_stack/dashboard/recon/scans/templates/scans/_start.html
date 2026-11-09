@@ -1,0 +1,11 @@
+{% extends "horizon/common/_modal_form.html" %}
+{% load i18n %}
+
+{# Contenuto del modale "Avvia una scansione". Horizon lo carica via AJAX col
+   nome col prefisso underscore (recon/scans/_start.html): è il file che vede
+   davvero l'utente quando clicca il pulsante. La pagina intera start.html, per
+   l'accesso diretto all'URL, lo include. #}
+{% block modal-body-right %}
+  <h3>{% trans "Avvia una scansione" %}</h3>
+  <p>{% trans "Inserisci l'id del progetto da scansionare. L'operazione richiede il ruolo admin ed è soggetta al limite di frequenza." %}</p>
+{% endblock %}

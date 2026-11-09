@@ -36,3 +36,32 @@ def test_ogni_template_sta_dove_lo_cerca_horizon():
         assert panel == panel_dir.name, f"{name} usato nel pannello {panel_dir.name}"
         expected = panel_dir / "templates" / panel / rest
         assert expected.is_file(), f"manca {expected.relative_to(DASHBOARD_DIR)}"
+
+
+def _modal_template_names():
+    """(cartella pannello, template_name) delle sole viste ModalFormView."""
+    for views in sorted(DASHBOARD_DIR.glob("*/views.py")):
+        text = views.read_text()
+        # Spezziamo il file in blocchi di classe e teniamo quelle che estendono
+        # ModalFormView, prendendo il template_name dichiarato in quel blocco.
+        for block in re.split(r"^class ", text, flags=re.M):
+            if "ModalFormView" not in block:
+                continue
+            match = TEMPLATE_NAME.search(block)
+            if match:
+                yield views.parent, match.group(1)
+
+
+def test_i_modali_hanno_il_partial_ajax():
+    # Quando Horizon carica un modale via AJAX (il caso normale: si clicca un
+    # pulsante e si apre la finestra), antepone un underscore al nome del file
+    # (horizon/forms/views.py, get_template_names): "recon/scans/start.html"
+    # diventa "recon/scans/_start.html". Se quel partial manca, il modale dà un
+    # errore 500 "TemplateDoesNotExist" e l'utente vede solo "si è verificato un
+    # errore". Ogni vista ModalFormView deve quindi avere anche il suo partial.
+    for panel_dir, name in _modal_template_names():
+        _dashboard, panel, rest = name.split("/", 2)
+        head, _, tail = rest.rpartition("/")
+        partial = panel_dir / "templates" / panel / head / ("_" + tail)
+        assert partial.is_file(), (
+            f"manca il partial del modale {partial.relative_to(DASHBOARD_DIR)}")

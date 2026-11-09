@@ -1,7 +1,15 @@
-{% extends "horizon/common/_modal_form.html" %}
+{% extends 'base.html' %}
 {% load i18n %}
 
-{% block modal-body-right %}
-  <h3>{% trans "Avvia una scansione" %}</h3>
-  <p>{% trans "Inserisci l'id del progetto da scansionare. L'operazione richiede il ruolo admin ed è soggetta al limite di frequenza." %}</p>
+{# Pagina intera per l'accesso diretto a /dashboard/recon/scans/start/. Il caso
+   normale (clic sul pulsante) è un modale AJAX che Horizon carica da
+   _start.html; qui ci limitiamo a includerlo dentro una pagina completa. #}
+{% block title %}{% trans "Avvia una scansione" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Avvia una scansione") %}
+{% endblock %}
+
+{% block main %}
+  {% include "recon/scans/_start.html" %}
 {% endblock %}
