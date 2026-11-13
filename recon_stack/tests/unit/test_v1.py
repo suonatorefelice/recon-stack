@@ -1,0 +1,267 @@
+# Test della API REST /v1 (api/v1.py) con il client di test di Flask.
+#
+# Il client di test simula le richieste HTTP chiamando direttamente l'app, senza
+# avviare un server. Non c'è Keystone: le intestazioni che normalmente aggiunge
+# keystonemiddleware (X-Identity-Status, X-Roles, ...) le mettiamo a mano, come
+# farebbe il middleware dopo aver validato un token.
+
+import types
+
+import pytest
+
+from recon_stack.api import app as app_mod
+from recon_stack.db import api as db
+from recon_stack.db import models
+
+
+@pytest.fixture
+def client(clean_database):
+    # clean_database (in conftest.py) prepara un database MySQL di test pulito.
+    yield app_mod.create_app().test_client()
+
+
+def _admin(**extra):
+    """Intestazioni di un chiamante admin autenticato."""
+    h = {
+        "X-Identity-Status": "Confirmed",
+        "X-User-Id": "user-1",
+        "X-User-Name": "admin",
+        "X-Project-Id": "progetto-admin",
+        "X-Roles": "admin",
+    }
+    h.update(extra)
+    return h
+
+
+def _member():
+    """Intestazioni di un utente autenticato ma senza ruolo admin."""
+    return _admin(**{"X-Roles": "member"})
+
+
+def _seed_scan_done():
+    """Crea una scansione completata con host e servizi, e la restituisce."""
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+    hosts = db.save_hosts(scan.id, [
+        {"ip_address": "10.10.10.5", "network_id": "net-1", "subnet_id": "sub-1",
+         "neutron_port_id": "port-1", "server_id": "vm-1", "server_name": "web",
+         "classification": models.HOST_KNOWN},
+        {"ip_address": "10.10.10.50", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": None,
+         "classification": models.HOST_UNKNOWN},
+    ])
+    web = next(h for h in hosts if h.ip_address == "10.10.10.5")
+    db.save_services([
+        {"host_id": web.id, "port_number": 22, "protocol": "tcp", "name": "ssh",
+         "product": "OpenSSH", "version": "8.9p1", "view": models.VIEW_INTERNAL},
+        {"host_id": web.id, "port_number": 80, "protocol": "tcp", "name": "http",
+         "product": "nginx", "version": "1.18.0", "view": models.VIEW_INTERNAL},
+    ])
+    return scan, web
+
+
+# --- Autenticazione (vale per tutte le rotte /v1) ----------------------------
+
+def test_health_resta_pubblico(client):
+    # /health non sta sotto /v1: niente token, sempre raggiungibile.
+    assert client.get("/health").status_code == 200
+
+
+# --- Scansioni ---------------------------------------------------------------
+
+def test_elenco_scansioni(client):
+    _seed_scan_done()
+    resp = client.get("/v1/scans", headers=_admin())
+    assert resp.status_code == 200
+    scans = resp.get_json()["scans"]
+    assert len(scans) == 1
+    assert scans[0]["project_id"] == "progetto-1"
+    assert scans[0]["status"] == models.SCAN_DONE
+
+
+def test_la_scansione_espone_la_fase(client):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    db.update_scan(scan.id, phase=models.PHASE_DISCOVERY)
+    resp = client.get(f"/v1/scans/{scan.id}", headers=_admin())
+    assert resp.status_code == 200
+    assert resp.get_json()["phase"] == models.PHASE_DISCOVERY
+
+
+def test_diff_scansione(client):
+    # Prima scansione: solo la VM web. Seconda: web + un intruso.
+    first = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                           status=models.SCAN_DONE)
+    db.save_hosts(first.id, [
+        {"ip_address": "10.10.10.5", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": "web",
+         "classification": models.HOST_KNOWN}])
+    second = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                            status=models.SCAN_DONE)
+    db.save_hosts(second.id, [
+        {"ip_address": "10.10.10.5", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": "web",
+         "classification": models.HOST_KNOWN},
+        {"ip_address": "10.10.10.50", "network_id": "net-1", "subnet_id": None,
+         "neutron_port_id": None, "server_id": None, "server_name": None,
+         "classification": models.HOST_UNKNOWN}])
+
+    resp = client.get(f"/v1/scans/{second.id}/diff", headers=_admin())
+    assert resp.status_code == 200
+    diff = resp.get_json()
+    assert diff["previous_scan_id"] == first.id
+    assert diff["hosts_appeared"] == ["10.10.10.50"]
+
+
+def test_diff_scansione_inesistente_404(client):
+    assert client.get("/v1/scans/x/diff", headers=_admin()).status_code == 404
+
+
+def test_esposizione_di_una_scansione(client):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+    db.save_findings([
+        {"scan_id": scan.id, "finding_type": models.FINDING_OVEREXPOSED,
+         "severity": models.SEVERITY_HIGH, "ip_address": "10.10.10.5",
+         "port_number": 22, "protocol": "tcp", "message": "ssh aperto a tutti"},
+        {"scan_id": scan.id, "finding_type": models.FINDING_USELESS_RULE,
+         "severity": models.SEVERITY_LOW, "ip_address": "10.10.10.5",
+         "port_number": 3306, "protocol": "tcp", "message": "regola inutile"},
+    ])
+
+    resp = client.get(f"/v1/scans/{scan.id}/exposure", headers=_admin())
+    assert resp.status_code == 200
+    body = resp.get_json()
+    # Ordinate dalla più grave: prima l'esposizione eccessiva (high).
+    assert [f["type"] for f in body["findings"]] == [
+        models.FINDING_OVEREXPOSED, models.FINDING_USELESS_RULE]
+    assert body["findings"][0]["message"] == "ssh aperto a tutti"
+
+
+def test_esposizione_scansione_inesistente_404(client):
+    assert client.get("/v1/scans/x/exposure",
+                      headers=_admin()).status_code == 404
+
+
+def test_esposizione_richiede_admin(client):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
+                          status=models.SCAN_DONE)
+    resp = client.get(f"/v1/scans/{scan.id}/exposure", headers=_member())
+    assert resp.status_code == 403
+
+
+def test_dettaglio_scansione_e_404(client):
+    scan, _ = _seed_scan_done()
+    ok = client.get(f"/v1/scans/{scan.id}", headers=_admin())
+    assert ok.status_code == 200
+    assert ok.get_json()["id"] == scan.id
+    assert client.get("/v1/scans/non-esiste", headers=_admin()).status_code == 404
+
+
+@pytest.fixture
+def avvii(monkeypatch):
+    """Sostituisce runner.start_scan: niente thread veri verso OpenStack."""
+    chiamate = []
+    monkeypatch.setattr("recon_stack.api.v1.runner.start_scan",
+                        lambda sid: chiamate.append(sid))
+    # Il progetto si risolve in id con Keystone: connessione finta (identità).
+    conn = types.SimpleNamespace(identity=types.SimpleNamespace(
+        find_project=lambda x, ignore_missing=False: types.SimpleNamespace(id=x)))
+    monkeypatch.setattr("recon_stack.api.v1.cloud.connect", lambda: conn)
+    return chiamate
+
+
+def test_post_scan_admin_accettata_202(client, avvii):
+    resp = client.post("/v1/scans", headers=_admin(),
+                       json={"project_id": "progetto-1"})
+    assert resp.status_code == 202
+    assert resp.get_json()["status"] == models.SCAN_PENDING
+    # Registrata nel log.
+    logged = db.list_scans(project_id="progetto-1")
+    assert len(logged) == 1
+    # Il thread di esecuzione è stato avviato con l'id della scansione creata.
+    assert avvii == [logged[0].id] == [resp.get_json()["id"]]
+
+
+def test_post_scan_senza_project_id_400(client, avvii):
+    resp = client.post("/v1/scans", headers=_admin(), json={})
+    assert resp.status_code == 400
+
+
+def test_post_scan_non_admin_403_e_non_registrata(client, avvii):
+    resp = client.post("/v1/scans", headers=_member(),
+                       json={"project_id": "progetto-1"})
+    assert resp.status_code == 403
+    # Il rifiuto non scrive nessuna riga nel database.
+    assert db.list_scans(project_id="progetto-1") == []
+
+
+# --- Host --------------------------------------------------------------------
+
+def test_catalogo_host_ultima_scansione(client):
+    _seed_scan_done()
+    resp = client.get("/v1/hosts", headers=_admin())
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["scan"]["project_id"] == "progetto-1"
+    ips = {h["ip_address"] for h in body["hosts"]}
+    assert ips == {"10.10.10.5", "10.10.10.50"}
+
+
+def test_dettaglio_host_include_i_servizi(client):
+    _, web = _seed_scan_done()
+    resp = client.get(f"/v1/hosts/{web.id}", headers=_admin())
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["server_name"] == "web"
+    names = sorted(s["name"] for s in body["services"])
+    assert names == ["http", "ssh"]
+
+
+def test_host_senza_scansioni_catalogo_vuoto(client):
+    # Nessuna scansione DONE: catalogo vuoto, scan a null, non un errore.
+    resp = client.get("/v1/hosts", headers=_admin())
+    assert resp.status_code == 200
+    assert resp.get_json() == {"scan": None, "hosts": []}
+
+
+# --- Servizi -----------------------------------------------------------------
+
+def test_ricerca_servizi_per_nome(client):
+    _seed_scan_done()
+    resp = client.get("/v1/services?name=ssh", headers=_admin())
+    assert resp.status_code == 200
+    services = resp.get_json()["services"]
+    assert len(services) == 1
+    assert services[0]["name"] == "ssh"
+    assert services[0]["product"] == "OpenSSH"
+    # L'IP dell'host è incluso, così il servizio si localizza senza chiedere
+    # l'host a parte.
+    assert services[0]["ip_address"] == "10.10.10.5"
+
+
+def test_elenco_servizi_del_catalogo(client):
+    _seed_scan_done()
+    resp = client.get("/v1/services", headers=_admin())
+    services = resp.get_json()["services"]
+    assert {s["port_number"] for s in services} == {22, 80}
+
+
+# --- Autorizzazione unica su /v1 ----------------------------------------------
+
+def test_lettura_senza_token_401_e_niente_db(client):
+    resp = client.get("/v1/hosts")
+    assert resp.status_code == 401
+    assert "error" in resp.get_json()
+    assert db.list_scans() == []
+
+
+def test_lettura_non_admin_403(client):
+    resp = client.get("/v1/scans", headers=_member())
+    assert resp.status_code == 403
+
+
+def test_post_scan_anonimo_401_e_niente_db(client):
+    # Una richiesta rifiutata non lascia tracce nel database.
+    resp = client.post("/v1/scans", json={"project_id": "p"})
+    assert resp.status_code == 401
+    assert db.list_scans(project_id="p") == []
