@@ -93,3 +93,18 @@ def short_uuid(value):
     if len(text) <= 8:
         return text
     return text[:8] + "…"
+
+
+def human_datetime(value):
+    """Data ISO della API in forma leggibile "AAAA-MM-GG HH:MM".
+
+    La API manda date in formato ISO ("2026-11-16T14:32:00.123456"); qui
+    togliamo la "T" e i secondi/microsecondi. `None` o "" -> "—"; un valore che
+    non è una data ISO (niente "T") resta com'è, senza errori.
+    """
+    if not value:
+        return "—"
+    text = str(value)
+    if "T" in text:
+        return text.replace("T", " ")[:16]
+    return text

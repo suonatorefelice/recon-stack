@@ -37,3 +37,11 @@ def test_short_uuid_robusto():
     assert labels.short_uuid("") == "—"
     assert labels.short_uuid("abcd") == "abcd"
     assert labels.short_uuid("0123456789abcdef") == "01234567…"
+
+
+def test_human_datetime_accorcia_la_data_iso():
+    assert labels.human_datetime("2026-11-16T14:32:00.123456") == "2026-11-16 14:32"
+    assert labels.human_datetime(None) == "—"
+    assert labels.human_datetime("") == "—"
+    # Un valore che non è una data ISO resta com'è (nessun errore).
+    assert labels.human_datetime("mai") == "mai"
