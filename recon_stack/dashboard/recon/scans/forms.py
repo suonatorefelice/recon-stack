@@ -13,9 +13,38 @@ from recon_stack.dashboard import api
 
 
 class StartScanForm(forms.SelfHandlingForm):
+    # Campo di partenza: l'id del progetto incollato a mano. Se riusciamo a
+    # leggere l'elenco dei progetti da Keystone, in __init__ lo sostituiamo con
+    # un menu a tendina (più comodo e meno soggetto a errori di battitura).
     project_id = forms.CharField(
         label=_("Id progetto"), max_length=64,
         help_text=_("Id del progetto OpenStack da scansionare."))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._usa_elenco_progetti()
+
+    def _usa_elenco_progetti(self):
+        """Prova a trasformare project_id in un menu con i progetti di Keystone.
+
+        Import pigro: openstack_dashboard esiste solo dentro Horizon (non sul
+        Mac). Se Keystone non risponde o non ci sono progetti, teniamo il campo
+        di testo: un problema dell'elenco non deve impedire di avviare una
+        scansione.
+        """
+        try:
+            from openstack_dashboard.api import keystone
+            progetti, _altri = keystone.tenant_list(self.request)
+            scelte = [(p.id, getattr(p, "name", p.id)) for p in progetti]
+            if not scelte:
+                return
+            self.fields["project_id"] = forms.ChoiceField(
+                label=_("Progetto"),
+                choices=scelte,
+                help_text=_("Progetto OpenStack da scansionare."))
+        except Exception:
+            # Teniamo il CharField: l'utente incolla l'id a mano.
+            pass
 
     def handle(self, request, data):
         try:
