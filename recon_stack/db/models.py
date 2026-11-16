@@ -52,6 +52,19 @@ SCAN_STATUSES = (SCAN_PENDING, SCAN_RUNNING, SCAN_DONE, SCAN_FAILED, SCAN_REJECT
 TRIGGER_MANUAL = "manual"      # chiesta da un admin con POST /v1/scans
 TRIGGER_PERIODIC = "periodic"  # avviata dallo scheduler (step 10)
 
+# Fase corrente di una scansione in corso, usata solo per mostrare l'avanzamento
+# nella dashboard ("Scoperta host e servizi (3 di 6)"). Lo scanner la aggiorna a
+# ogni passo di run_scan e la azzera a fine. L'ordine di SCAN_PHASES è l'ordine
+# di avanzamento, e la sua lunghezza è il "di 6".
+PHASE_PERIMETER = "perimeter"   # calcolo del perimetro
+PHASE_INVENTORY = "inventory"   # inventario del progetto
+PHASE_DISCOVERY = "discovery"   # scoperta host e servizi
+PHASE_SAVING = "saving"         # salvataggio di host e servizi
+PHASE_EXTERNAL = "external"     # vista esterna sui floating IP
+PHASE_EXPOSURE = "exposure"     # calcolo delle segnalazioni di esposizione
+SCAN_PHASES = (PHASE_PERIMETER, PHASE_INVENTORY, PHASE_DISCOVERY,
+               PHASE_SAVING, PHASE_EXTERNAL, PHASE_EXPOSURE)
+
 # Classificazione di un host (GLOSSARY.md).
 HOST_KNOWN = "known"      # host censito: risponde e ha una porta Neutron
 HOST_UNKNOWN = "unknown"  # host sconosciuto: risponde ma nessuna porta Neutron
@@ -113,6 +126,10 @@ class Scan(Base):
     perimeter: Mapped[str | None] = mapped_column(Text)
     # Motivo del fallimento o del rifiuto, leggibile da una persona.
     fault: Mapped[str | None] = mapped_column(Text)
+    # Fase corrente mentre la scansione è in corso (models.PHASE_*), solo per
+    # mostrare l'avanzamento nella dashboard. Nulla quando la scansione non è
+    # in corso: lo scanner la azzera a fine (DONE).
+    phase: Mapped[str | None] = mapped_column(String(32))
 
     hosts: Mapped[list["Host"]] = relationship(
         back_populates="scan", cascade="all, delete-orphan")

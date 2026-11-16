@@ -36,7 +36,7 @@ def test_le_migrazioni_creano_le_tabelle(db):
             "inventory_servers", "inventory_ports", "inventory_floating_ips",
             "inventory_security_groups", "inventory_sg_rules",
             "exposure_findings", "alembic_version"} <= set(tables)
-    assert migration.current_revision() == "0005"
+    assert migration.current_revision() == "0006"
 
 
 def test_modelli_e_migrazioni_descrivono_lo_stesso_schema(db):
@@ -59,7 +59,7 @@ def test_dbsync_si_puo_ripetere(db):
     # Il database è già aggiornato dalla fixture: rilanciare il comando non
     # deve dare errori né cambiare la revisione.
     dbsync.main([])
-    assert migration.current_revision() == "0005"
+    assert migration.current_revision() == "0006"
 
 
 # --- Operazioni sulle scansioni ---------------------------------------------
@@ -105,6 +105,20 @@ def test_valori_sconosciuti_vengono_rifiutati(db):
 
 def test_scansione_inesistente(db):
     assert api.get_scan("non-esiste") is None
+
+
+def test_scan_phases_costanti_ordinate():
+    # Le fasi in ordine di avanzamento: la loro lunghezza è il "di 6".
+    assert models.SCAN_PHASES == (
+        models.PHASE_PERIMETER, models.PHASE_INVENTORY, models.PHASE_DISCOVERY,
+        models.PHASE_SAVING, models.PHASE_EXTERNAL, models.PHASE_EXPOSURE)
+    assert len(models.SCAN_PHASES) == 6
+
+
+def test_scan_salva_e_rilegge_la_fase(db):
+    scan = api.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    api.update_scan(scan.id, phase=models.PHASE_DISCOVERY)
+    assert api.get_scan(scan.id).phase == models.PHASE_DISCOVERY
 
 
 def test_un_host_deve_appartenere_a_una_scansione_esistente(db):
