@@ -9,6 +9,7 @@
 # restituiamo uno stato vuoto con error=True, e il template mostra un avviso.
 
 from recon_stack.db import models
+from recon_stack.dashboard.recon import labels
 
 
 # Tutte le gravità, così i conteggi partono da zero e la riga dei badge mostra
@@ -18,6 +19,24 @@ _SEVERITIES = ("high", "medium", "low", "info")
 
 def _empty_counts():
     return {s: 0 for s in _SEVERITIES}
+
+
+def _enrich_scan(scan):
+    """Aggiunge alla scansione i campi già tradotti/leggibili per il template.
+
+    Il Riepilogo è la pagina d'atterraggio: la scansione deve arrivare con le
+    etichette italiane, gli UUID accorciati e le date in forma breve, così il
+    template non mostra valori grezzi (la data ISO piena, un UUID lungo, ...).
+    """
+    scan = dict(scan)
+    scan["status_it"] = labels.status_label(scan.get("status"))
+    scan["trigger_it"] = labels.trigger_label(scan.get("trigger"))
+    scan["id_short"] = labels.short_uuid(scan.get("id"))
+    scan["project_short"] = labels.short_uuid(scan.get("project_id"))
+    scan["created_h"] = labels.human_datetime(scan.get("created_at"))
+    scan["started_h"] = labels.human_datetime(scan.get("started_at"))
+    scan["finished_h"] = labels.human_datetime(scan.get("finished_at"))
+    return scan
 
 
 def build_summary(client, top=5):
@@ -47,7 +66,7 @@ def build_summary(client, top=5):
         ordered = sorted(
             findings,
             key=lambda f: models.SEVERITY_ORDER.get(f.get("severity"), 99))
-        return {"scan": scan, "counts": counts,
+        return {"scan": _enrich_scan(scan), "counts": counts,
                 "top_findings": ordered[:top], "error": False}
     except Exception:
         return {"scan": None, "counts": _empty_counts(),

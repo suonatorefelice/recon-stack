@@ -42,3 +42,21 @@ def test_conta_per_gravita_e_limita_le_piu_gravi():
     assert s["counts"]["high"] == 2 and s["counts"]["low"] == 1
     assert s["counts"]["info"] == 0        # le gravità assenti restano a zero
     assert len(s["top_findings"]) == 2
+
+
+def test_la_scansione_porta_i_campi_leggibili():
+    # Il Riepilogo è la pagina d'atterraggio: la scansione deve arrivare già
+    # con etichette italiane, UUID accorciati e date leggibili, così il template
+    # non mostra valori grezzi (es. la data ISO piena su "Conclusa").
+    scans = [{
+        "id": "0123456789abcdef", "project_id": "fedcba9876543210",
+        "status": "DONE", "trigger": "manual",
+        "finished_at": "2026-11-16T14:32:00.123456",
+    }]
+    s = summary.build_summary(_Client(scans=scans, findings=[]))
+    scan = s["scan"]
+    assert scan["status_it"] == "Completata"
+    assert scan["trigger_it"] == "Manuale"
+    assert scan["id_short"] == "01234567…"
+    assert scan["project_short"] == "fedcba98…"
+    assert scan["finished_h"] == "2026-11-16 14:32"

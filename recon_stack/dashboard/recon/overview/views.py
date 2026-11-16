@@ -21,15 +21,10 @@ class IndexView(generic.TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         client = api.reconclient(self.request)
+        # build_summary restituisce la scansione già arricchita (etichette
+        # italiane, UUID accorciati, date leggibili): la passiamo così com'è.
         data = summary.build_summary(client)
-
         scan = data["scan"]
-        if scan:
-            # Arricchiamo la scansione con le etichette leggibili.
-            scan = dict(scan)
-            scan["status_it"] = labels.status_label(scan.get("status"))
-            scan["trigger_it"] = labels.trigger_label(scan.get("trigger"))
-            scan["id_short"] = labels.short_uuid(scan.get("id"))
 
         # Conteggi per gravità con etichetta e colore, nell'ordine grave→info.
         counts = []
