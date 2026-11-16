@@ -11,6 +11,7 @@ from recon_stack.dashboard import api
 from recon_stack.dashboard.recon import labels
 from recon_stack.dashboard.recon.scans import forms as scans_forms
 from recon_stack.dashboard.recon.scans import tables as scans_tables
+from recon_stack.db import models
 
 
 class IndexView(horizon_tables.DataTableView):
@@ -52,6 +53,12 @@ class DetailView(generic.TemplateView):
             scan["created_h"] = labels.human_datetime(scan.get("created_at"))
             scan["started_h"] = labels.human_datetime(scan.get("started_at"))
             scan["finished_h"] = labels.human_datetime(scan.get("finished_at"))
+            # Avanzamento: la fase leggibile ("Scoperta... (3 di 6)") e un flag
+            # "in corso" (PENDING/RUNNING), con cui il template mostra la rotella
+            # e si auto-ricarica finché la scansione non è finita.
+            scan["phase_text"] = labels.phase_text(scan.get("phase"))
+            scan["in_corso"] = scan.get("status") in (
+                models.SCAN_PENDING, models.SCAN_RUNNING)
         context["scan"] = api.wrap(scan) if scan else None
         # Diff con la scansione precedente (Step 10); se fallisce non blocca la
         # pagina, mostriamo solo i dati della scansione.
