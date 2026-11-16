@@ -188,8 +188,17 @@ $ curl -H "X-Auth-Token: $OS_TOKEN" "http://localhost:5238/v1/services?name=ssh"
 
 Il plugin installa anche i pannelli in Horizon: entra nella dashboard
 (`http://<indirizzo-del-nodo>/dashboard`) come admin e apri
-**Progetto → Recon** (host, servizi, scansioni). Il dettaglio di una scansione
-mostra anche il diff e le segnalazioni di esposizione.
+**Progetto → Recon**. La pagina d'atterraggio è **Riepilogo**: mostra a colpo
+d'occhio l'ultima scansione, il conteggio delle segnalazioni per gravità (badge
+colorati) e quelle da guardare subito. Gli altri pannelli sono host, servizi e
+scansioni. Il dettaglio di una scansione mostra anche il diff e le segnalazioni
+di esposizione.
+
+Per leggibilità, la dashboard mostra gravità e tipi di segnalazione, stato e
+origine delle scansioni in italiano, le date in forma breve e gli UUID
+accorciati (il valore pieno resta nel tooltip). Il modulo **Avvia scansione**
+propone un elenco a tendina dei progetti (se Keystone non risponde, si può
+comunque incollare l'id a mano).
 
 #### 6. Scansione periodica e diff (step 10)
 

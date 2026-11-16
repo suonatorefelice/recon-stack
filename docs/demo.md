@@ -144,6 +144,20 @@ hanno ancora finito di avviarsi, oppure (dopo un riavvio a freddo della VM
 DevStack) che il bridge della rete esterna `br-ex` è spento e il floating IP non
 risponde: vedi la sezione "Provarlo" del [README](../README.md).
 
+### Controlli sulla dashboard (leggibilità)
+
+Dopo una scansione, aprendo la dashboard verifica anche:
+
+- il pannello **Riepilogo** si apre per primo e mostra l'ultima scansione, i
+  conteggi per gravità (badge colorati: 3 gravi, 1 media, 2 basse, 1 info) e la
+  tabella "Da guardare subito";
+- gravità, tipi di segnalazione, stato e origine delle scansioni sono in
+  italiano; le date sono in forma breve; gli UUID sono accorciati (il valore
+  pieno compare passando il mouse);
+- in **Avvia scansione** compare l'elenco a tendina dei progetti (se Keystone
+  non risponde, resta il campo in cui incollare l'id);
+- nessuna regressione sui pannelli host, servizi e scansioni.
+
 ## Fare pulizia
 
 `demo/teardown_demo.sh` cancella tutto il progetto demo (VM, floating IP, router,
