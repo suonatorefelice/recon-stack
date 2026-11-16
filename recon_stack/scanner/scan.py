@@ -48,15 +48,18 @@ def run_scan(conn, scan_id):
 
     try:
         # 2. Perimetro, scritto subito nel log della scansione (ADR 0005).
+        db.update_scan(scan_id, phase=models.PHASE_PERIMETER)
         perimeter = perimeter_mod.build(conn, project_id)
         db.update_scan(scan_id, perimeter=json.dumps(perimeter.as_dict()))
 
         # 3. Inventario del progetto (VM, porte, floating IP, security group).
+        db.update_scan(scan_id, phase=models.PHASE_INVENTORY)
         servers, ports, floating_ips, _sgs, _rules = inventory.collect_and_save(
             conn, project_id, scan_id)
         servers_by_id = {s.server_id: s.name for s in servers}
 
         # 4. Host discovery e service discovery, rete per rete.
+        db.update_scan(scan_id, phase=models.PHASE_DISCOVERY)
         all_hosts = []
         # Servizi trovati, indicizzati per (rete, IP): li agganceremo agli host
         # dopo averli salvati, quando ogni host avrà il suo id. Usiamo la rete
@@ -81,6 +84,7 @@ def run_scan(conn, scan_id):
 
         # 5. Salvataggio e chiusura. Salviamo prima gli host (così ottengono un
         # id), poi i servizi collegati al rispettivo host.
+        db.update_scan(scan_id, phase=models.PHASE_SAVING)
         saved_hosts = db.save_hosts(scan_id, all_hosts)
         all_services = []
         for host in saved_hosts:
@@ -97,6 +101,7 @@ def run_scan(conn, scan_id):
         #    rete public, per sapere cosa risponde davvero da fuori. I servizi
         #    trovati si agganciano all'host del loro IP privato, con vista
         #    "esterna"; così lo stesso host può avere servizi interni ed esterni.
+        db.update_scan(scan_id, phase=models.PHASE_EXTERNAL)
         external_services = _discover_external(
             floating_ips, saved_hosts, perimeter)
         db.save_services(external_services)
@@ -104,10 +109,12 @@ def run_scan(conn, scan_id):
         # 7. Esposizione (step 11): confronto fra i servizi trovati e i security
         #    group, da cui nascono le segnalazioni (regola inutile, servizio
         #    latente, esposizione eccessiva, ...). Legge quanto appena salvato.
+        db.update_scan(scan_id, phase=models.PHASE_EXPOSURE)
         findings = exposure.compute_and_save(scan_id)
 
+        # Completata: azzeriamo la fase, così la dashboard mostra solo lo stato.
         db.update_scan(scan_id, status=models.SCAN_DONE,
-                       finished_at=models.utcnow())
+                       finished_at=models.utcnow(), phase=None)
         LOG.info("scansione %s completata: %d host, %d servizi interni, "
                  "%d esterni, %d segnalazioni", scan_id, len(all_hosts),
                  len(all_services), len(external_services), len(findings))

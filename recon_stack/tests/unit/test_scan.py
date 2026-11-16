@@ -185,6 +185,29 @@ def no_privsep(monkeypatch):
 
 # --- run_scan ----------------------------------------------------------------
 
+def test_run_scan_registra_le_fasi_in_ordine(database, no_privsep, monkeypatch):
+    # Spiamo update_scan: registriamo le fasi e deleghiamo all'originale, così la
+    # scansione procede davvero mentre controlliamo l'avanzamento scritto.
+    fasi = []
+    originale = db.update_scan
+
+    def spia(scan_id, **f):
+        # Registriamo solo le fasi di avanzamento; l'azzeramento a fine
+        # (phase=None) è verificato a parte rileggendo dal database.
+        if f.get("phase"):
+            fasi.append(f["phase"])
+        return originale(scan_id, **f)
+
+    monkeypatch.setattr(scan_mod.db, "update_scan", spia)
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    scan_mod.run_scan(FakeConnection(), scan.id)
+
+    assert fasi == [
+        models.PHASE_PERIMETER, models.PHASE_INVENTORY, models.PHASE_DISCOVERY,
+        models.PHASE_SAVING, models.PHASE_EXTERNAL, models.PHASE_EXPOSURE]
+    # A scansione completata la fase è azzerata: si vede solo "Completata".
+    assert db.get_scan(scan.id).phase is None
+
 def test_scansione_completa_classifica_gli_host(database, no_privsep):
     scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
     result = scan_mod.run_scan(FakeConnection(), scan.id)
