@@ -1,0 +1,95 @@
+# Etichette italiane e colori per la dashboard.
+#
+# I dati arrivano dalla API con i valori "grezzi" salvati nel database (in
+# inglese: high/medium/low, DONE/RUNNING, overexposed, ...). Qui, in un posto
+# solo, li traduciamo in italiano e associamo a ognuno il colore del badge, così
+# tabelle, template e pannello Riepilogo leggono da qui e non ripetono le stesse
+# mappe. Sono funzioni pure, senza import di Horizon/Django: si provano sul Mac.
+#
+# Ogni funzione ripiega sul valore grezzo se non lo conosce (.get(v, v)): se
+# domani la API aggiunge un tipo nuovo, la pagina mostra il nome tecnico invece
+# di rompersi.
+
+
+# Gravità (models.SEVERITY_*): etichetta leggibile e classe colore del badge.
+SEVERITY_LABELS = {
+    "high": "Grave",
+    "medium": "Media",
+    "low": "Bassa",
+    "info": "Informativa",
+}
+
+# Classi dei badge Bootstrap che Horizon già include (label label-<css>):
+# danger=rosso, warning=arancio, info=azzurro, default=grigio.
+SEVERITY_CSS = {
+    "high": "danger",
+    "medium": "warning",
+    "low": "info",
+    "info": "default",
+}
+
+# Tipi di segnalazione (models.FINDING_*): nome tecnico -> frase breve italiana.
+FINDING_LABELS = {
+    "overexposed": "Esposto a chiunque",
+    "latent_service": "Servizio non previsto",
+    "useless_rule": "Regola inutile",
+    "unknown_exposed": "Host sconosciuto esposto",
+    "externally_reachable": "Raggiungibile da fuori",
+    "wasted_floating_ip": "Floating IP sprecato",
+    "external_only": "Visto solo da fuori",
+    "no_port_security": "Senza port security",
+}
+
+# Stato della scansione (models.SCAN_*).
+STATUS_LABELS = {
+    "PENDING": "In attesa",
+    "RUNNING": "In corso",
+    "DONE": "Completata",
+    "FAILED": "Fallita",
+    "REJECTED": "Rifiutata",
+}
+
+# Origine della scansione (models.TRIGGER_*).
+TRIGGER_LABELS = {
+    "manual": "Manuale",
+    "periodic": "Periodica",
+}
+
+
+def severity_label(value):
+    """Gravità in italiano; se sconosciuta, il valore grezzo."""
+    return SEVERITY_LABELS.get(value, value)
+
+
+def severity_css(value):
+    """Classe colore del badge per la gravità; se sconosciuta, "default"."""
+    return SEVERITY_CSS.get(value, "default")
+
+
+def finding_label(value):
+    """Tipo di segnalazione in italiano; se sconosciuto, il valore grezzo."""
+    return FINDING_LABELS.get(value, value)
+
+
+def status_label(value):
+    """Stato scansione in italiano; se sconosciuto, il valore grezzo."""
+    return STATUS_LABELS.get(value, value)
+
+
+def trigger_label(value):
+    """Origine scansione in italiano; se sconosciuta, il valore grezzo."""
+    return TRIGGER_LABELS.get(value, value)
+
+
+def short_uuid(value):
+    """UUID accorciato ai primi 8 caratteri + "…", per non riempire la tabella.
+
+    Il valore pieno resta disponibile (lo mettiamo nel tooltip del template).
+    `None` o stringa vuota -> "—"; una stringa già corta resta com'è.
+    """
+    if not value:
+        return "—"
+    text = str(value)
+    if len(text) <= 8:
+        return text
+    return text[:8] + "…"
