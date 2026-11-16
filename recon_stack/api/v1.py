@@ -53,6 +53,9 @@ def _scan_dict(scan):
         # perimeter è salvato come testo JSON: lo riconvertiamo in oggetto.
         "perimeter": json.loads(scan.perimeter) if scan.perimeter else None,
         "fault": scan.fault,
+        # Fase corrente mentre è in corso (None altrimenti): serve alla dashboard
+        # per mostrare l'avanzamento.
+        "phase": scan.phase,
     }
 
 

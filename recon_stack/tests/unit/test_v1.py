@@ -95,6 +95,14 @@ def test_elenco_scansioni(client):
     assert scans[0]["status"] == models.SCAN_DONE
 
 
+def test_la_scansione_espone_la_fase(client):
+    scan = db.create_scan("progetto-1", models.TRIGGER_MANUAL)
+    db.update_scan(scan.id, phase=models.PHASE_DISCOVERY)
+    resp = client.get(f"/v1/scans/{scan.id}", headers=_admin())
+    assert resp.status_code == 200
+    assert resp.get_json()["phase"] == models.PHASE_DISCOVERY
+
+
 def test_diff_scansione(client):
     # Prima scansione: solo la VM web. Seconda: web + un intruso.
     first = db.create_scan("progetto-1", models.TRIGGER_MANUAL,
