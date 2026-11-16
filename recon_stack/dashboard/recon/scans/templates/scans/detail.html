@@ -9,14 +9,14 @@
 {% block main %}
   {% if scan %}
   <dl class="dl-horizontal">
-    <dt>{% trans "ID" %}</dt><dd>{{ scan.id }}</dd>
-    <dt>{% trans "Progetto" %}</dt><dd>{{ scan.project_id }}</dd>
-    <dt>{% trans "Stato" %}</dt><dd>{{ scan.status }}</dd>
-    <dt>{% trans "Origine" %}</dt><dd>{{ scan.trigger }}</dd>
+    <dt>{% trans "ID" %}</dt><dd><span title="{{ scan.id }}">{{ scan.id_short }}</span></dd>
+    <dt>{% trans "Progetto" %}</dt><dd><span title="{{ scan.project_id }}">{{ scan.project_short }}</span></dd>
+    <dt>{% trans "Stato" %}</dt><dd>{{ scan.status_it }}</dd>
+    <dt>{% trans "Origine" %}</dt><dd>{{ scan.trigger_it }}</dd>
     <dt>{% trans "Richiesta da" %}</dt><dd>{{ scan.requested_by_user|default:"—" }}</dd>
-    <dt>{% trans "Creata" %}</dt><dd>{{ scan.created_at|default:"—" }}</dd>
-    <dt>{% trans "Avviata" %}</dt><dd>{{ scan.started_at|default:"—" }}</dd>
-    <dt>{% trans "Conclusa" %}</dt><dd>{{ scan.finished_at|default:"—" }}</dd>
+    <dt>{% trans "Creata" %}</dt><dd>{{ scan.created_h }}</dd>
+    <dt>{% trans "Avviata" %}</dt><dd>{{ scan.started_h }}</dd>
+    <dt>{% trans "Conclusa" %}</dt><dd>{{ scan.finished_h }}</dd>
     <dt>{% trans "Motivo" %}</dt><dd>{{ scan.fault|default:"—" }}</dd>
   </dl>
 
@@ -35,8 +35,8 @@
     <tbody>
       {% for f in findings %}
       <tr>
-        <td>{{ f.severity }}</td>
-        <td>{{ f.type }}</td>
+        <td><span class="label label-{{ f.severity_css }}">{{ f.severity_it }}</span></td>
+        <td>{{ f.type_it }}</td>
         <td>{{ f.ip_address|default:"—" }}</td>
         <td>{% if f.port_number %}{{ f.port_number }}/{{ f.protocol }}{% else %}—{% endif %}</td>
         <td>{{ f.message }}</td>

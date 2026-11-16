@@ -8,6 +8,7 @@ from horizon import forms as horizon_forms
 from horizon import tables as horizon_tables
 
 from recon_stack.dashboard import api
+from recon_stack.dashboard.recon import labels
 from recon_stack.dashboard.recon.scans import forms as scans_forms
 from recon_stack.dashboard.recon.scans import tables as scans_tables
 
@@ -39,6 +40,18 @@ class DetailView(generic.TemplateView):
             exceptions.handle(self.request,
                               _("Impossibile leggere la scansione dalla API."))
             scan = {}
+        # Arricchiamo la scansione con le etichette italiane e gli UUID
+        # accorciati: i template Django non possono chiamare le funzioni di
+        # labels da soli, quindi prepariamo qui i campi pronti da mostrare.
+        if scan:
+            scan = dict(scan)
+            scan["status_it"] = labels.status_label(scan.get("status"))
+            scan["trigger_it"] = labels.trigger_label(scan.get("trigger"))
+            scan["id_short"] = labels.short_uuid(scan.get("id"))
+            scan["project_short"] = labels.short_uuid(scan.get("project_id"))
+            scan["created_h"] = labels.human_datetime(scan.get("created_at"))
+            scan["started_h"] = labels.human_datetime(scan.get("started_at"))
+            scan["finished_h"] = labels.human_datetime(scan.get("finished_at"))
         context["scan"] = api.wrap(scan) if scan else None
         # Diff con la scansione precedente (Step 10); se fallisce non blocca la
         # pagina, mostriamo solo i dati della scansione.
@@ -47,9 +60,18 @@ class DetailView(generic.TemplateView):
         except Exception:
             context["diff"] = None
         # Segnalazioni di esposizione (Step 11); stesso criterio: se fallisce
-        # mostriamo comunque il resto della pagina.
+        # mostriamo comunque il resto della pagina. Ogni segnalazione viene
+        # tradotta (gravità, colore del badge, tipo) per il template.
         try:
-            context["findings"] = client.get_scan_exposure(self.kwargs["scan_id"])
+            raw = client.get_scan_exposure(self.kwargs["scan_id"])
+            findings = []
+            for f in raw:
+                f = dict(f)
+                f["severity_it"] = labels.severity_label(f.get("severity"))
+                f["severity_css"] = labels.severity_css(f.get("severity"))
+                f["type_it"] = labels.finding_label(f.get("type"))
+                findings.append(api.wrap(f))
+            context["findings"] = findings
         except Exception:
             context["findings"] = None
         return context

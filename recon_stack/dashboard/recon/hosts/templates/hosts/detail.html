@@ -9,10 +9,10 @@
 {% block main %}
   <dl class="dl-horizontal">
     <dt>{% trans "Indirizzo IP" %}</dt><dd>{{ host.ip_address }}</dd>
-    <dt>{% trans "Classificazione" %}</dt><dd>{{ host.classification }}</dd>
+    <dt>{% trans "Classificazione" %}</dt><dd>{{ host.classification_it }}</dd>
     <dt>{% trans "VM" %}</dt><dd>{{ host.server_name|default:"—" }}</dd>
-    <dt>{% trans "Rete" %}</dt><dd>{{ host.network_id|default:"—" }}</dd>
-    <dt>{% trans "Porta Neutron" %}</dt><dd>{{ host.neutron_port_id|default:"—" }}</dd>
+    <dt>{% trans "Rete" %}</dt><dd><span title="{{ host.network_id }}">{{ host.network_short }}</span></dd>
+    <dt>{% trans "Porta Neutron" %}</dt><dd><span title="{{ host.neutron_port_id }}">{{ host.port_short }}</span></dd>
   </dl>
 
   <h3>{% trans "Servizi" %}</h3>

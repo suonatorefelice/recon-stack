@@ -10,6 +10,7 @@ from horizon import exceptions
 from horizon import tables as horizon_tables
 
 from recon_stack.dashboard import api
+from recon_stack.dashboard.recon import labels
 from recon_stack.dashboard.recon.hosts import tables as hosts_tables
 from recon_stack.dashboard.recon.services import tables as services_tables
 
@@ -55,5 +56,13 @@ class DetailView(horizon_tables.DataTableView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["host"] = api.wrap(self._get_host())
+        # Arricchiamo l'host con l'etichetta della classificazione (stessa mappa
+        # della tabella) e gli UUID accorciati, pronti per il template.
+        host = dict(self._get_host())
+        if host:
+            host["classification_it"] = hosts_tables.CLASSIFICATIONS.get(
+                host.get("classification"), host.get("classification"))
+            host["network_short"] = labels.short_uuid(host.get("network_id"))
+            host["port_short"] = labels.short_uuid(host.get("neutron_port_id"))
+        context["host"] = api.wrap(host)
         return context
