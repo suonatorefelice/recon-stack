@@ -235,9 +235,10 @@ def _format_diff_service(service):
 
 def _scan_show(scan):
     """Colonne e valori per mostrare una scansione (usato da show e start)."""
-    columns = ("ID", "Progetto", "Stato", "Origine", "Richiesta da",
+    columns = ("ID", "Progetto", "Stato", "Fase", "Origine", "Richiesta da",
                "Creata", "Avviata", "Conclusa", "Motivo")
     values = (scan.get("id"), scan.get("project_id"), scan.get("status"),
+              scan.get("phase"),
               scan.get("trigger"), scan.get("requested_by_user"),
               scan.get("created_at"), scan.get("started_at"),
               scan.get("finished_at"), scan.get("fault"))

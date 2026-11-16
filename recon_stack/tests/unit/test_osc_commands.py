@@ -48,6 +48,13 @@ class _FakeClient:
                 "created_at": "x", "started_at": None, "finished_at": None,
                 "fault": None}
 
+    def get_scan(self, scan_id):
+        self.calls.append(("get_scan", scan_id))
+        return {"id": scan_id, "project_id": "p-1", "status": "RUNNING",
+                "trigger": "manual", "requested_by_user": "user-1",
+                "created_at": "x", "started_at": "y", "finished_at": None,
+                "fault": None, "phase": "discovery"}
+
     def get_scan_diff(self, scan_id):
         self.calls.append(("get_scan_diff", scan_id))
         return {"previous_scan_id": "s-0",
@@ -123,6 +130,12 @@ def test_scan_start_mostra_la_scansione_creata():
     (columns, values), client = _run(commands.StartScan, project="p-1")
     assert client.calls[0] == ("create_scan", "p-1")
     assert values[columns.index("Stato")] == "PENDING"
+
+
+def test_scan_show_mostra_la_fase():
+    (columns, values), client = _run(commands.ShowScan, scan="s-1")
+    assert client.calls[0] == ("get_scan", "s-1")
+    assert values[columns.index("Fase")] == "discovery"
 
 
 def test_scan_diff_riassume_le_differenze():
