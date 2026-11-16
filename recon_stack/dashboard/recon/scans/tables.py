@@ -3,6 +3,7 @@
 from django.utils.translation import gettext_lazy as _
 from horizon import tables
 
+from recon_stack.dashboard import api
 from recon_stack.dashboard.recon import labels
 
 
@@ -10,10 +11,6 @@ from recon_stack.dashboard.recon import labels
 # modulo labels. La colonna "id" mostra l'UUID accorciato, ma il collegamento al
 # dettaglio continua a usare l'id pieno della riga (Horizon risolve il link
 # dall'id dell'oggetto, non dal testo mostrato).
-def _status(scan):
-    return labels.status_label(scan.status)
-
-
 def _trigger(scan):
     return labels.trigger_label(scan.trigger)
 
@@ -30,6 +27,24 @@ def _project(scan):
     return labels.short_uuid(scan.project_id)
 
 
+def _phase(scan):
+    # La fase ha senso solo mentre la scansione è in corso; phase_text torna ""
+    # per le scansioni finite o vecchie (phase assente).
+    return labels.phase_text(getattr(scan, "phase", None))
+
+
+# Stato grezzo -> etichetta italiana (per la colonna Stato).
+STATUS_DISPLAY = tuple(labels.STATUS_LABELS.items())
+# Stato grezzo -> è uno stato finale? (Horizon confronta in minuscolo). Gli stati
+# NON elencati (PENDING, RUNNING) sono "in transito": Horizon ri-sonda da sola la
+# riga finché non diventano finali, aggiornando stato e fase senza ricaricare.
+STATUS_CHOICES = (
+    ("done", True),
+    ("failed", False),
+    ("rejected", False),
+)
+
+
 class StartScan(tables.LinkAction):
     """Pulsante che apre il modulo per avviare una nuova scansione."""
 
@@ -42,11 +57,31 @@ class StartScan(tables.LinkAction):
     policy_rules = ()
 
 
+class UpdateRow(tables.Row):
+    """Rilegge una singola scansione dalla API per l'auto-aggiornamento.
+
+    Con ajax=True Horizon, per le righe in stato non finale, richiama da sola
+    get_data ogni pochi secondi e riscrive la riga: così stato e fase di una
+    scansione in corso avanzano nell'elenco senza ricaricare la pagina.
+    """
+
+    ajax = True
+
+    def get_data(self, request, scan_id):
+        return api.wrap(api.reconclient(request).get_scan(scan_id))
+
+
 class ScansTable(tables.DataTable):
     id = tables.Column(_id, verbose_name=_("ID"),
                        link="horizon:recon:scans:detail")
     project_id = tables.Column(_project, verbose_name=_("Progetto"))
-    status = tables.Column(_status, verbose_name=_("Stato"))
+    # Valore grezzo per lo stato (serve all'auto-refresh e all'icona), mostrato
+    # in italiano con display_choices.
+    status = tables.Column("status", verbose_name=_("Stato"),
+                           status=True,
+                           status_choices=STATUS_CHOICES,
+                           display_choices=STATUS_DISPLAY)
+    phase = tables.Column(_phase, verbose_name=_("Fase"), empty_value="")
     trigger = tables.Column(_trigger, verbose_name=_("Origine"))
     created_at = tables.Column(_created, verbose_name=_("Creata"))
 
@@ -54,3 +89,5 @@ class ScansTable(tables.DataTable):
         name = "scans"
         verbose_name = _("Scansioni")
         table_actions = (StartScan,)
+        row_class = UpdateRow
+        status_columns = ("status",)
