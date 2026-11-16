@@ -39,6 +39,19 @@ def test_short_uuid_robusto():
     assert labels.short_uuid("0123456789abcdef") == "01234567…"
 
 
+def test_phase_label_e_testo_con_posizione():
+    assert labels.phase_label("discovery") == "Scoperta host e servizi"
+    assert labels.phase_text("discovery") == "Scoperta host e servizi (3 di 6)"
+    assert labels.phase_text("perimeter").endswith("(1 di 6)")
+    assert labels.phase_text("exposure").endswith("(6 di 6)")
+
+
+def test_phase_text_robusto():
+    assert labels.phase_text(None) == ""
+    assert labels.phase_text("boh") == ""          # non in SCAN_PHASES: niente posizione
+    assert labels.phase_label("boh") == "boh"      # fallback al grezzo
+
+
 def test_human_datetime_accorcia_la_data_iso():
     assert labels.human_datetime("2026-11-16T14:32:00.123456") == "2026-11-16 14:32"
     assert labels.human_datetime(None) == "—"

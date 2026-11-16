@@ -11,6 +11,9 @@
 # di rompersi.
 
 
+from recon_stack.db import models
+
+
 # Gravità (models.SEVERITY_*): etichetta leggibile e classe colore del badge.
 SEVERITY_LABELS = {
     "high": "Grave",
@@ -55,6 +58,16 @@ TRIGGER_LABELS = {
     "periodic": "Periodica",
 }
 
+# Fasi di una scansione in corso (models.PHASE_*): nome tecnico -> etichetta.
+PHASE_LABELS = {
+    "perimeter": "Perimetro",
+    "inventory": "Inventario",
+    "discovery": "Scoperta host e servizi",
+    "saving": "Salvataggio",
+    "external": "Vista esterna",
+    "exposure": "Esposizione",
+}
+
 
 def severity_label(value):
     """Gravità in italiano; se sconosciuta, il valore grezzo."""
@@ -79,6 +92,25 @@ def status_label(value):
 def trigger_label(value):
     """Origine scansione in italiano; se sconosciuta, il valore grezzo."""
     return TRIGGER_LABELS.get(value, value)
+
+
+def phase_label(value):
+    """Fase in italiano; se sconosciuta, il valore grezzo."""
+    return PHASE_LABELS.get(value, value)
+
+
+def phase_text(value):
+    """Fase con la posizione: "Scoperta host e servizi (3 di 6)".
+
+    Restituisce "" se la fase è None o non è una fase nota (models.SCAN_PHASES):
+    così non mostriamo una posizione inventata e il dettaglio di una scansione
+    senza fase (vecchia o non in corso) non scrive "(None di 6)".
+    """
+    if value not in models.SCAN_PHASES:
+        return ""
+    posizione = models.SCAN_PHASES.index(value) + 1
+    return "%s (%d di %d)" % (phase_label(value), posizione,
+                             len(models.SCAN_PHASES))
 
 
 def short_uuid(value):
