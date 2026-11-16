@@ -13,9 +13,11 @@ class Recon(horizon.Dashboard):
     name = _("Recon-Stack")
     slug = "recon"
     # I pannelli della dashboard, nell'ordine del menu. Ogni nome corrisponde a
-    # una sottocartella con un panel.py (hosts/, services/, scans/).
-    panels = ("hosts", "services", "scans")
-    default_panel = "hosts"
+    # una sottocartella con un panel.py (overview/, hosts/, services/, scans/).
+    # "Riepilogo" è la pagina d'atterraggio: chi apre la dashboard vede subito
+    # lo stato dell'ultima scansione invece della tabella host nuda.
+    panels = ("overview", "hosts", "services", "scans")
+    default_panel = "overview"
     # Solo chi ha il ruolo admin vede ed apre la dashboard.
     permissions = ("openstack.roles.admin",)
 

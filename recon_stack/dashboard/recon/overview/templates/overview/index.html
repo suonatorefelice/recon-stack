@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Riepilogo" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Riepilogo") %}
+{% endblock %}
+
+{% block main %}
+  {% if error %}
+    <div class="alert alert-warning">
+      {% trans "Impossibile leggere i dati dalla API. Riprova più tardi." %}
+    </div>
+  {% elif not scan %}
+    <div class="alert alert-info">
+      {% trans "Nessuna scansione completata finora. Avvia una scansione dal pannello Scansioni." %}
+    </div>
+  {% else %}
+
+    {# Scheda: l'ultima scansione completata. #}
+    <div class="panel panel-default">
+      <div class="panel-heading"><h3 class="panel-title">{% trans "Ultima scansione" %}</h3></div>
+      <div class="panel-body">
+        <dl class="dl-horizontal">
+          <dt>{% trans "Stato" %}</dt><dd>{{ scan.status_it }}</dd>
+          <dt>{% trans "Origine" %}</dt><dd>{{ scan.trigger_it }}</dd>
+          <dt>{% trans "Conclusa" %}</dt><dd>{{ scan.finished_at|default:"—" }}</dd>
+          <dt>{% trans "ID" %}</dt>
+          <dd><span title="{{ scan.id }}">{{ scan.id_short }}</span></dd>
+        </dl>
+        <a href="{% url 'horizon:recon:scans:detail' scan.id %}" class="btn btn-default btn-sm">
+          {% trans "Apri il dettaglio" %}
+        </a>
+      </div>
+    </div>
+
+    {# Conteggi per gravità, come badge colorati. #}
+    <div class="panel panel-default">
+      <div class="panel-heading"><h3 class="panel-title">{% trans "Segnalazioni per gravità" %}</h3></div>
+      <div class="panel-body">
+        {% for c in counts %}
+          <span class="label label-{{ c.css }}">{{ c.label }}: {{ c.value }}</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    {# Le segnalazioni più gravi da guardare subito. #}
+    {% if top_findings %}
+    <div class="panel panel-default">
+      <div class="panel-heading"><h3 class="panel-title">{% trans "Da guardare subito" %}</h3></div>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>{% trans "Gravità" %}</th>
+            <th>{% trans "Tipo" %}</th>
+            <th>{% trans "Indirizzo" %}</th>
+            <th>{% trans "Porta" %}</th>
+            <th>{% trans "Descrizione" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in top_findings %}
+          <tr>
+            <td><span class="label label-{{ f.severity_css }}">{{ f.severity_it }}</span></td>
+            <td>{{ f.type_it }}</td>
+            <td>{{ f.ip_address|default:"—" }}</td>
+            <td>{% if f.port_number %}{{ f.port_number }}/{{ f.protocol }}{% else %}—{% endif %}</td>
+            <td>{{ f.message }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+  {% endif %}
+{% endblock %}
