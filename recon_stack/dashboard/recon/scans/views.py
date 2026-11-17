@@ -34,6 +34,13 @@ class DetailView(generic.TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        # Ultima briciola del breadcrumb: Horizon ci mette context["page_title"]
+        # (templatetag breadcrumb_nav). Senza, mostrava "None". Usiamo l'id
+        # accorciato della scansione, così la briciola la identifica; lo
+        # ricaviamo dall'URL, quindi è sempre presente anche se l'API non
+        # risponde. Il titolo della pagina resta "Dettaglio scansione" (lo fissa
+        # il template nel blocco page_header).
+        context["page_title"] = labels.short_uuid(self.kwargs["scan_id"])
         client = api.reconclient(self.request)
         try:
             scan = client.get_scan(self.kwargs["scan_id"])
