@@ -52,4 +52,9 @@ class IndexView(generic.TemplateView):
         context["counts"] = counts
         context["top_findings"] = top
         context["error"] = data["error"]
+        # Ultima briciola del breadcrumb: il templatetag di Horizon usa
+        # context["page_title"]. generic.TemplateView (a differenza delle viste
+        # Horizon) non lo imposta da solo dall'attributo di classe, e usciva
+        # "None"; lo passiamo noi.
+        context["page_title"] = self.page_title
         return context
