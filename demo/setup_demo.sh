@@ -25,7 +25,7 @@
 #
 # Serve a provare lo Step 4: l'inventario raccolto dal servizio deve coincidere
 # con "openstack server list", "port list" e "floating ip list" su questo
-# progetto. Le scansioni vere si eseguono SOLO su questo progetto (CLAUDE.md).
+# progetto. Le scansioni vere si eseguono SOLO su questo progetto.
 #
 # USO (sul nodo DevStack, dopo aver caricato le credenziali admin):
 #   source /opt/stack/devstack/openrc admin admin   # imposta OS_AUTH_URL ecc.

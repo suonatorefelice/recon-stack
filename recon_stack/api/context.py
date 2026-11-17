@@ -71,7 +71,7 @@ class RequestContext:
 
         Vale sia per avviare una scansione sia per leggere il catalogo via API
         (Step 8): Recon-Stack è uno strumento per chi amministra il cloud e i
-        suoi dati sono inventari a livello di cloud (CLAUDE.md).
+        suoi dati sono inventari a livello di cloud.
 
         Solleva NotAuthenticated o NotAuthorized: chi chiama le traduce nella
         risposta HTTP giusta (401 o 403) e, per le scansioni, registra comunque

@@ -14,3 +14,7 @@ dist/
 .tox/
 .pytest_cache/
 .report-test/
+# strumenti dell'assistente, tenuti in locale e fuori dal repo
+CLAUDE.md
+.claude/
+docs/superpowers/

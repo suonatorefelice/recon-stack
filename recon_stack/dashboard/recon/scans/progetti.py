@@ -1,7 +1,7 @@
 # Scelta dei progetti da mostrare nel menu "Avvia scansione".
 #
 # Le scansioni vere girano SOLO sul progetto demo (recon-demo): è la regola di
-# sicurezza del progetto (CLAUDE.md, ADR 0002). Far scegliere all'utente uno
+# sicurezza del progetto (ADR 0002). Far scegliere all'utente uno
 # qualunque dei progetti di sistema di OpenStack (admin, service, demo, ...) non
 # ha senso e confonde: quei progetti non si scansionano. Qui filtriamo l'elenco
 # letto da Keystone e teniamo solo i progetti "scansionabili".

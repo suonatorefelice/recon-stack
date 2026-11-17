@@ -2,7 +2,7 @@
 
 ## Contesto
 
-Gli step precedenti dicono quali host e servizi esistono nelle reti del progetto (vista interna, dai namespace di Neutron, [0006](0006-vista-interna-namespace.md)). Mancava però la domanda che interessa a chi amministra il cloud: *quanto* di tutto questo è davvero esposto, e le regole del firewall (security group) sono coerenti con i servizi che girano? Lo step 11 aggiunge questa lettura. È uno strumento difensivo di inventario, provato solo sul progetto demo in laboratorio (CLAUDE.md).
+Gli step precedenti dicono quali host e servizi esistono nelle reti del progetto (vista interna, dai namespace di Neutron, [0006](0006-vista-interna-namespace.md)). Mancava però la domanda che interessa a chi amministra il cloud: *quanto* di tutto questo è davvero esposto, e le regole del firewall (security group) sono coerenti con i servizi che girano? Lo step 11 aggiunge questa lettura. È uno strumento difensivo di inventario, provato solo sul progetto demo in laboratorio.
 
 ## Decisione
 

@@ -1,7 +1,7 @@
 # Calcolo e controllo del perimetro di una scansione (ADR 0005).
 #
 # Il perimetro è l'insieme degli indirizzi che la scansione PUÒ toccare. Un
-# vincolo del progetto (CLAUDE.md) impone di scansionare solo indirizzi che
+# vincolo del progetto impone di scansionare solo indirizzi che
 # appartengono al progetto: il perimetro serve esattamente a questo, ed è un
 # punto solo del codice a deciderlo, così la regola non si può aggirare.
 #

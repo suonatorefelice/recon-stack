@@ -4,7 +4,7 @@ Il progetto procede per step. Uno step è chiuso solo quando la sua **verifica**
 
 | Step | Contenuto | Verifica |
 | --- | --- | --- |
-| 1 | **Documentazione iniziale**: glossario, concetti, ADR, architettura, piano, README | i documenti sono coerenti fra loro e con CLAUDE.md |
+| 1 | **Documentazione iniziale**: glossario, concetti, ADR, architettura, piano, README | i documenti sono coerenti fra loro e con il README |
 | 2 | **Scheletro del servizio e plugin DevStack**: pacchetto `recon_stack`, `setup.cfg`, configurazione, app Flask con `/health`, `devstack/settings` e `plugin.sh` con tutte le fasi | Flask lanciato a mano risponde; con `stack.sh` i servizi `devstack@recon-api` e `devstack@recon-scanner` sono attivi e `curl http://<host>:5238/health` risponde; il servizio `recon` compare in `openstack catalog list` |
 | 3 | **Database**: modelli SQLAlchemy, prima migrazione Alembic, comando `recon-stack-dbsync` | test unitari su SQLite in memoria; su DevStack le tabelle esistono dopo `stack.sh` |
 | 4 | **Inventario** da Nova e Neutron, più `demo/setup_demo.sh` che crea un progetto di prova | l'inventario salvato coincide con `openstack server list`, `port list` e `floating ip list` sul progetto demo |
