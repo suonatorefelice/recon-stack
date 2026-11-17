@@ -1,4 +1,18 @@
-# Recon-Stack
+<p align="center">
+  <img src="docs/img/recon-radar.svg" alt="Recon-Stack: un radar che scopre host e servizi nelle reti di un progetto" width="150">
+</p>
+
+<h1 align="center">Recon-Stack</h1>
+
+<p align="center">
+  <img alt="OpenStack: nuovo servizio" src="https://img.shields.io/badge/OpenStack-nuovo%20servizio-ED1944?logo=openstack&logoColor=white">
+  <img alt="DevStack: plugin" src="https://img.shields.io/badge/DevStack-plugin-ED1944?logo=openstack&logoColor=white">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
+  <img alt="Test: 200 passati" src="https://img.shields.io/badge/test-200%20passati-22c55e">
+  <br>
+  <img alt="Integra: Keystone, Nova, Neutron, Horizon" src="https://img.shields.io/badge/integra-Keystone%20%C2%B7%20Nova%20%C2%B7%20Neutron%20%C2%B7%20Horizon-0f766e">
+  <img alt="Interfacce: REST API, openstack recon, Horizon" src="https://img.shields.io/badge/interfacce-REST%20API%20%C2%B7%20openstack%20recon%20%C2%B7%20Horizon-334155">
+</p>
 
 **Service discovery senza agenti per OpenStack.** Scopre quali host e quali servizi girano davvero nelle reti di un progetto, li confronta con ciò che OpenStack dichiara e li pubblica in un catalogo consultabile da API REST e dashboard, aggiornato periodicamente.
 
@@ -151,15 +165,25 @@ $ openstack floating ip list --project recon-demo
 
 #### 3. Eseguire una scansione (step 6 e 7)
 
-La scansione entra nelle network namespace di Neutron, quindi va lanciata con
-`sudo`:
+Il modo più comodo è chiedere la scansione all'API e **aspettare che finisca**:
+un comando solo, senza privilegi, che segue le fasi e stampa l'esito con il
+riepilogo delle segnalazioni (la esegue il servizio `recon-scanner`; serve il
+ruolo admin):
+
+```console
+$ openstack recon scan start --project recon-demo --wait
+```
+
+In alternativa, il modo **diretto a basso livello**: lo scanner entra nelle
+network namespace di Neutron, quindi va lanciato sul nodo con `sudo`. Stampa
+subito gli host trovati con i loro servizi:
 
 ```console
 $ sudo /opt/stack/data/venv/bin/recon-stack-scan --project recon-demo \
     --config-file /etc/recon-stack/recon-stack.conf
 ```
 
-Stampa gli host trovati divisi in **censiti** (le VM demo, con il loro nome),
+Quest'ultimo stampa gli host trovati divisi in **censiti** (le VM demo, con il loro nome),
 **sconosciuti** (rispondono ma senza porta Neutron) e **assenti** (hanno una
 porta ma non rispondono), con sotto ciascuno i **servizi** in ascolto (porta,
 protocollo, nome, prodotto, versione; es. `22/tcp ssh Dropbear sshd 2020.81`).

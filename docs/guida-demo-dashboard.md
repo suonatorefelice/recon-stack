@@ -148,6 +148,24 @@ Sono le **7 segnalazioni** attese:
 
 ---
 
+## In alternativa: la demo da terminale
+
+Se preferisci mostrare la demo da riga di comando invece che dalla dashboard,
+dopo la preparazione (Parte 1) bastano pochi comandi `openstack recon` (dal nodo
+DevStack, con le credenziali admin caricate — `source /opt/stack/devstack/openrc
+admin admin`):
+
+```console
+$ openstack recon scan start --project recon-demo --wait   # avvia e attende la fine, mostra le fasi
+$ SCAN=$(openstack recon scan list -f value -c ID | head -1)
+$ openstack recon scan show "$SCAN"                        # riepilogo: "Segnalazioni: Grave: 3 · ..."
+$ openstack recon scan exposure "$SCAN"                    # le 7 segnalazioni in dettaglio
+$ openstack recon host show 10.10.10.142                   # un host per indirizzo IP, coi suoi servizi
+```
+
+`scan start --wait` segue la scansione fino alla fine (le fasi scorrono su
+stderr) e stampa l'esito; non serve ricontrollare a mano.
+
 ## Se qualcosa non torna
 
 | Sintomo | Causa più probabile | Rimedio |
