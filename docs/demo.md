@@ -159,8 +159,11 @@ Dopo una scansione, aprendo la dashboard verifica anche:
 - gravità, tipi di segnalazione, stato e origine delle scansioni sono in
   italiano; le date sono in forma breve; gli UUID sono accorciati (il valore
   pieno compare passando il mouse);
-- in **Avvia scansione** compare l'elenco a tendina dei progetti (se Keystone
-  non risponde, resta il campo in cui incollare l'id);
+- in **Avvia scansione** l'elenco a tendina mostra i soli progetti
+  scansionabili (di norma `recon-demo`); se Keystone non risponde, resta il
+  campo in cui incollare l'id;
+- ogni riga dell'elenco scansioni ha il pulsante **Dettaglio** che apre il
+  riepilogo di quella scansione;
 - nessuna regressione sui pannelli host, servizi e scansioni.
 
 ## Fare pulizia

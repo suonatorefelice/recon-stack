@@ -174,11 +174,23 @@ $ openstack recon host list --project recon-demo  # gli host dell'ultima scansio
 $ openstack recon service list --name ssh         # cerca un servizio nel catalogo
 ```
 
-Il dettaglio di un host e dei suoi servizi (prende il primo id dalla lista):
+Il dettaglio di un host e dei suoi servizi. L'host si indica con il suo id,
+oppure — più comodo — con il suo **indirizzo IP**:
 
 ```console
+$ openstack recon host show 10.10.10.142           # per indirizzo
 $ HOST=$(openstack recon host list --project recon-demo -f value -c ID | head -1)
-$ openstack recon host show "$HOST"
+$ openstack recon host show "$HOST"                 # oppure per id
+```
+
+Si può anche avviare una scansione tramite l'API (serve il ruolo admin) e, con
+`--wait`, aspettare che finisca e vederne subito l'esito. Il dettaglio di una
+scansione (`scan show`) riassume le segnalazioni per gravità:
+
+```console
+$ openstack recon scan start --project recon-demo --wait    # avvia e attende la fine
+$ SCAN=$(openstack recon scan list -f value -c ID | head -1)  # l'ultima scansione
+$ openstack recon scan show "$SCAN"                         # include "Segnalazioni: Grave: 3 · Media: 1 · ..."
 ```
 
 Le stesse cose via API REST (serve un token admin):
@@ -191,17 +203,20 @@ $ curl -H "X-Auth-Token: $OS_TOKEN" "http://localhost:5238/v1/services?name=ssh"
 #### 5. Dashboard (step 9)
 
 Il plugin installa anche i pannelli in Horizon: entra nella dashboard
-(`http://<indirizzo-del-nodo>/dashboard`) come admin e apri
-**Progetto → Recon**. La pagina d'atterraggio è **Riepilogo**: mostra a colpo
-d'occhio l'ultima scansione, il conteggio delle segnalazioni per gravità (badge
-colorati) e quelle da guardare subito. Gli altri pannelli sono host, servizi e
-scansioni. Il dettaglio di una scansione mostra anche il diff e le segnalazioni
-di esposizione.
+(`http://<indirizzo-del-nodo>/dashboard`) come admin e apri la dashboard
+**Recon-Stack** (una voce propria nella barra laterale, visibile solo agli
+admin). La pagina d'atterraggio è **Riepilogo**: mostra a colpo d'occhio
+l'ultima scansione, il conteggio delle segnalazioni per gravità (badge colorati)
+e quelle da guardare subito. Gli altri pannelli sono host, servizi e scansioni.
+Il dettaglio di una scansione mostra anche il diff e le segnalazioni di
+esposizione.
 
 Per leggibilità, la dashboard mostra gravità e tipi di segnalazione, stato e
 origine delle scansioni in italiano, le date in forma breve e gli UUID
-accorciati (il valore pieno resta nel tooltip). Il modulo **Avvia scansione**
-propone un elenco a tendina dei progetti (se Keystone non risponde, si può
+accorciati (il valore pieno resta nel tooltip); ogni riga dell'elenco scansioni
+ha un pulsante **Dettaglio** che apre il riepilogo di quella scansione. Il modulo
+**Avvia scansione** propone un elenco a tendina con i soli progetti
+scansionabili (di norma il solo `recon-demo`; se Keystone non risponde, si può
 comunque incollare l'id a mano).
 
 #### 6. Scansione periodica e diff (step 10)
