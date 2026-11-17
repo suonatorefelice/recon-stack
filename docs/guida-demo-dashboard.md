@@ -105,8 +105,9 @@ Apri **http://192.168.97.128/dashboard**, accedi come `admin` / `admin`
 
 1. Apri il pannello **Scansioni**.
 2. In alto a destra, premi **«Avvia scansione»**.
-3. Nel modulo scegli il progetto **`recon-demo`** dall'elenco a tendina e
-   conferma.
+3. Nel modulo scegli il progetto dall'elenco a tendina e conferma. Il menu
+   mostra **solo `recon-demo`**: è l'unico progetto che si scansiona (gli altri
+   sono progetti di sistema di OpenStack e non vanno toccati).
 
 La scansione parte. Nell'elenco la riga si aggiorna **da sola** (non serve
 ricaricare): vedrai lo stato passare a *In corso* e la colonna **«Fase»**

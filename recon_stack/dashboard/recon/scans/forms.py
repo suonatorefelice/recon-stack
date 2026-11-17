@@ -10,6 +10,7 @@ from horizon import forms
 from horizon import messages
 
 from recon_stack.dashboard import api
+from recon_stack.dashboard.recon.scans import progetti as progetti_sel
 
 
 class StartScanForm(forms.SelfHandlingForm):
@@ -27,15 +28,25 @@ class StartScanForm(forms.SelfHandlingForm):
     def _usa_elenco_progetti(self):
         """Prova a trasformare project_id in un menu con i progetti di Keystone.
 
-        Import pigro: openstack_dashboard esiste solo dentro Horizon (non sul
-        Mac). Se Keystone non risponde o non ci sono progetti, teniamo il campo
-        di testo: un problema dell'elenco non deve impedire di avviare una
-        scansione.
+        Mostra solo i progetti scansionabili (di norma il solo recon-demo): le
+        scansioni girano solo lì, e un menu con tutti i progetti di sistema di
+        OpenStack confonderebbe. Il filtro vero è in progetti.scelte_menu, e
+        l'elenco dei nomi consentiti si può cambiare con l'impostazione Django
+        RECON_SCANNABLE_PROJECTS.
+
+        Import pigro: openstack_dashboard e django.conf esistono solo dentro
+        Horizon (non sul Mac). Se Keystone non risponde o non ci sono progetti,
+        teniamo il campo di testo: un problema dell'elenco non deve impedire di
+        avviare una scansione.
         """
         try:
+            from django.conf import settings
             from openstack_dashboard.api import keystone
             progetti, _altri = keystone.tenant_list(self.request)
-            scelte = [(p.id, getattr(p, "name", p.id)) for p in progetti]
+            consentiti = getattr(
+                settings, "RECON_SCANNABLE_PROJECTS",
+                progetti_sel.PROGETTI_SCANSIONABILI_DEFAULT)
+            scelte = progetti_sel.scelte_menu(progetti, consentiti)
             if not scelte:
                 return
             self.fields["project_id"] = forms.ChoiceField(
