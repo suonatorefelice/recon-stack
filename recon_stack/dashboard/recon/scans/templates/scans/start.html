@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{# Pagina intera per l'accesso diretto a /dashboard/recon/scans/start/. Il caso
+   normale (clic sul pulsante) è un modale AJAX che Horizon carica da
+   _start.html; qui ci limitiamo a includerlo dentro una pagina completa. #}
+{% block title %}{% trans "Avvia una scansione" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Avvia una scansione") %}
+{% endblock %}
+
+{% block main %}
+  {% include "recon/scans/_start.html" %}
+{% endblock %}

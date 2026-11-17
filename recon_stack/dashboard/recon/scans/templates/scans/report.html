@@ -1,0 +1,80 @@
+{% load i18n %}<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>{% trans "Report Recon-Stack" %}</title>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; margin: 2em; color: #222; }
+  h1, h2 { color: #1a3a5a; }
+  table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left;
+           font-size: 0.9em; vertical-align: top; }
+  th { background: #f0f4f8; }
+  .sev-high { color: #a00; font-weight: bold; }
+  .sev-medium { color: #c66a00; }
+  .sev-low { color: #666; }
+  .sev-info { color: #06c; }
+</style>
+</head>
+<body>
+<h1>{% trans "Report Recon-Stack" %}</h1>
+
+{% if error %}
+<p>{% trans "Report non disponibile: la API non ha risposto." %}</p>
+{% else %}
+
+<h2>{% trans "Scansione" %}</h2>
+<table>
+  <tr><th>{% trans "Progetto" %}</th><td>{{ scan.project_id }}</td></tr>
+  <tr><th>{% trans "Stato" %}</th><td>{{ scan.status_it }}</td></tr>
+  <tr><th>{% trans "Creata" %}</th><td>{{ scan.created_h }}</td></tr>
+  <tr><th>{% trans "Conclusa" %}</th><td>{{ scan.finished_h }}</td></tr>
+</table>
+<p>
+  {% blocktrans with t=summary.hosts_total k=summary.known u=summary.unknown a=summary.absent f=summary.findings_total %}
+  Host: {{ t }} (censiti {{ k }}, sconosciuti {{ u }}, assenti {{ a }}). Segnalazioni: {{ f }}.
+  {% endblocktrans %}
+</p>
+
+<h2>{% trans "Esposizione" %}</h2>
+{% if findings %}
+<table>
+  <tr><th>{% trans "Gravità" %}</th><th>{% trans "Tipo" %}</th>
+      <th>{% trans "Indirizzo" %}</th><th>{% trans "Porta" %}</th>
+      <th>{% trans "Descrizione" %}</th></tr>
+  {% for f in findings %}
+  <tr>
+    <td class="sev-{{ f.severity }}">{{ f.severity_it }}</td>
+    <td>{{ f.type_it }}</td>
+    <td>{{ f.ip_address|default:"—" }}</td>
+    <td>{% if f.port_number %}{{ f.port_number }}/{{ f.protocol }}{% else %}—{% endif %}</td>
+    <td>{{ f.message }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>{% trans "Nessuna segnalazione." %}</p>
+{% endif %}
+
+<h2>{% trans "Host e servizi" %}</h2>
+<table>
+  <tr><th>{% trans "Indirizzo" %}</th><th>{% trans "Classificazione" %}</th>
+      <th>{% trans "VM" %}</th><th>{% trans "Servizi (interni)" %}</th>
+      <th>{% trans "Servizi (esterni)" %}</th></tr>
+  {% for h in hosts %}
+  <tr>
+    <td>{{ h.ip_address }}</td>
+    <td>{{ h.classification_it }}</td>
+    <td>{{ h.server_name|default:"—" }}</td>
+    <td>{% for s in h.services_internal %}{{ s.port_number }}/{{ s.protocol }}
+        {{ s.name|default:"" }} {{ s.product|default:"" }} {{ s.version|default:"" }}<br>
+        {% empty %}—{% endfor %}</td>
+    <td>{% for s in h.services_external %}{{ s.port_number }}/{{ s.protocol }}
+        {{ s.name|default:"" }}<br>{% empty %}—{% endfor %}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endif %}
+</body>
+</html>

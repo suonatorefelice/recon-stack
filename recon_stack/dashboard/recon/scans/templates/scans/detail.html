@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Dettaglio scansione" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Dettaglio scansione") %}
+{% endblock %}
+
+{% block main %}
+  {% if scan %}
+  <dl class="dl-horizontal">
+    <dt>{% trans "ID" %}</dt><dd><span title="{{ scan.id }}">{{ scan.id_short }}</span></dd>
+    <dt>{% trans "Progetto" %}</dt><dd><span title="{{ scan.project_id }}">{{ scan.project_short }}</span></dd>
+    <dt>{% trans "Stato" %}</dt>
+    <dd>
+      {% if scan.in_corso %}
+        <span class="fa fa-spinner fa-spin"></span>
+        {{ scan.status_it }}{% if scan.phase_text %} — {{ scan.phase_text }}{% endif %}
+      {% else %}
+        {{ scan.status_it }}
+      {% endif %}
+    </dd>
+    <dt>{% trans "Origine" %}</dt><dd>{{ scan.trigger_it }}</dd>
+    <dt>{% trans "Richiesta da" %}</dt><dd>{{ scan.requested_by_user|default:"—" }}</dd>
+    <dt>{% trans "Creata" %}</dt><dd>{{ scan.created_h }}</dd>
+    <dt>{% trans "Avviata" %}</dt><dd>{{ scan.started_h }}</dd>
+    <dt>{% trans "Conclusa" %}</dt><dd>{{ scan.finished_h }}</dd>
+    <dt>{% trans "Motivo" %}</dt><dd>{{ scan.fault|default:"—" }}</dd>
+  </dl>
+
+  {# Host e servizi di QUESTA scansione (la API filtra per ?scan_id=). #}
+  <a href="{% url 'horizon:recon:hosts:index' %}?scan_id={{ scan.id }}" class="btn btn-default btn-sm">
+    {% trans "Host di questa scansione" %}
+  </a>
+  <a href="{% url 'horizon:recon:services:index' %}?scan_id={{ scan.id }}" class="btn btn-default btn-sm">
+    {% trans "Servizi di questa scansione" %}
+  </a>
+
+  {% if findings %}
+  <h3>{% trans "Esposizione" %}</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>{% trans "Gravità" %}</th>
+        <th>{% trans "Tipo" %}</th>
+        <th>{% trans "Indirizzo" %}</th>
+        <th>{% trans "Porta" %}</th>
+        <th>{% trans "Descrizione" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr>
+        <td><span class="label label-{{ f.severity_css }}">{{ f.severity_it }}</span></td>
+        <td>{{ f.type_it }}</td>
+        <td>{{ f.ip_address|default:"—" }}</td>
+        <td>{% if f.port_number %}{{ f.port_number }}/{{ f.protocol }}{% else %}—{% endif %}</td>
+        <td>{{ f.message }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if diff %}
+  <h3>{% trans "Confronto con la scansione precedente" %}</h3>
+  <dl class="dl-horizontal">
+    <dt>{% trans "Host comparsi" %}</dt>
+    <dd>{{ diff.hosts_appeared|join:", "|default:"—" }}</dd>
+    <dt>{% trans "Host spariti" %}</dt>
+    <dd>{{ diff.hosts_disappeared|join:", "|default:"—" }}</dd>
+    <dt>{% trans "Servizi comparsi" %}</dt>
+    <dd>
+      {% for s in diff.services_appeared %}{{ s.ip }} {{ s.port }}/{{ s.protocol }} {{ s.name|default:"" }}<br>{% empty %}—{% endfor %}
+    </dd>
+    <dt>{% trans "Servizi spariti" %}</dt>
+    <dd>
+      {% for s in diff.services_disappeared %}{{ s.ip }} {{ s.port }}/{{ s.protocol }} {{ s.name|default:"" }}<br>{% empty %}—{% endfor %}
+    </dd>
+  </dl>
+  {% endif %}
+  {% else %}
+  <p>{% trans "Scansione non trovata." %}</p>
+  {% endif %}
+
+  {# Scansione in corso: ricarichiamo la pagina ogni pochi secondi, così
+     l'avanzamento si aggiorna da solo. Si ferma da sé quando lo stato diventa
+     finale, perché allora scan.in_corso è falso e questo blocco non c'è più. #}
+  {% if scan.in_corso %}
+  <script>setTimeout(function () { window.location.reload(); }, 4000);</script>
+  {% endif %}
+{% endblock %}
