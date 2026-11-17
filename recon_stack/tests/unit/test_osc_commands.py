@@ -175,3 +175,139 @@ def test_servizio_della_vista_esterna_e_indicato():
     servizio = {"port_number": 22, "protocol": "tcp", "name": "ssh",
                 "product": None, "version": None, "view": "external"}
     assert commands._format_service(servizio) == "22/tcp ssh (vista esterna)"
+
+
+# --- Client finto con stati controllati (per --wait, riepilogo, host per IP) --
+
+class _ScanFake:
+    """Client finto che restituisce stati scansione a comando.
+
+    `statuses` è la sequenza di stati che get_scan ritorna a ogni chiamata
+    (esaurita, ritorna DONE). Serve a simulare una scansione che avanza.
+    """
+
+    def __init__(self, statuses, findings=None):
+        self._statuses = list(statuses)
+        self._findings = findings or []
+        self.calls = []
+
+    def create_scan(self, project_id):
+        self.calls.append(("create_scan", project_id))
+        return {"id": "s-9", "project_id": project_id, "status": "PENDING"}
+
+    def get_scan(self, scan_id):
+        self.calls.append(("get_scan", scan_id))
+        status = self._statuses.pop(0) if self._statuses else "DONE"
+        return {"id": scan_id, "project_id": "p-1", "status": status,
+                "phase": "discovery", "trigger": "manual",
+                "requested_by_user": "user-1", "created_at": "x",
+                "started_at": "y", "finished_at": None, "fault": None}
+
+    def get_scan_exposure(self, scan_id, severity=None):
+        self.calls.append(("get_scan_exposure", scan_id, severity))
+        return self._findings
+
+    def list_hosts(self, project_id=None, scan_id=None, classification=None):
+        self.calls.append(("list_hosts", project_id, scan_id, classification))
+        return [{"id": "h-1", "ip_address": "10.10.10.142"}]
+
+    def get_host(self, host_id):
+        self.calls.append(("get_host", host_id))
+        return {"id": host_id, "ip_address": "10.10.10.142",
+                "classification": "known", "server_name": "web",
+                "network_id": "net-1", "neutron_port_id": "port-1",
+                "services": []}
+
+
+def _run_with(client, command_cls, **args):
+    """Come _run, ma con un client finto fornito da fuori."""
+    command = command_cls(_App(client), [])
+    return command.take_action(argparse.Namespace(**args)), client
+
+
+# --- Riepilogo delle segnalazioni --------------------------------------------
+
+def test_riepilogo_segnalazioni_conta_per_gravita():
+    assert commands._exposure_summary(None) == "—"
+    assert commands._exposure_summary([]) == "nessuna"
+    findings = [{"severity": "high"}, {"severity": "high"}, {"severity": "high"},
+                {"severity": "medium"},
+                {"severity": "low"}, {"severity": "low"},
+                {"severity": "info"}]
+    assert commands._exposure_summary(findings) == \
+        "Grave: 3 · Media: 1 · Bassa: 2 · Info: 1"
+
+
+def test_scan_show_include_il_riepilogo_se_conclusa():
+    client = _ScanFake(statuses=["DONE"],
+                       findings=[{"severity": "high"}, {"severity": "high"},
+                                 {"severity": "medium"}, {"severity": "info"}])
+    (columns, values), _ = _run_with(client, commands.ShowScan, scan="s-1")
+    assert values[columns.index("Stato")] == "DONE"
+    assert values[columns.index("Segnalazioni")] == "Grave: 2 · Media: 1 · Info: 1"
+
+
+def test_scan_show_non_conclusa_non_chiede_le_segnalazioni():
+    # Scansione in corso: niente riepilogo e nessuna chiamata a exposure.
+    client = _ScanFake(statuses=["RUNNING"])
+    (columns, values), _ = _run_with(client, commands.ShowScan, scan="s-1")
+    assert values[columns.index("Segnalazioni")] == "—"
+    assert all(c[0] != "get_scan_exposure" for c in client.calls)
+
+
+# --- scan start --wait -------------------------------------------------------
+
+def test_scan_start_wait_segue_fino_a_conclusa():
+    client = _ScanFake(statuses=["RUNNING", "DONE"],
+                       findings=[{"severity": "low"}])
+    (columns, values), _ = _run_with(
+        client, commands.StartScan, project="p-1", wait=True,
+        timeout=10, interval=0)
+    assert values[columns.index("Stato")] == "DONE"
+    assert values[columns.index("Segnalazioni")] == "Bassa: 1"
+    assert ("create_scan", "p-1") in client.calls
+    assert ("get_scan", "s-9") in client.calls
+
+
+def test_scan_start_senza_wait_non_aspetta():
+    client = _ScanFake(statuses=["RUNNING"])
+    (columns, values), _ = _run_with(
+        client, commands.StartScan, project="p-1", wait=False,
+        timeout=180, interval=3)
+    assert values[columns.index("Stato")] == "PENDING"
+    # non deve aver ricontrollato lo stato
+    assert all(c[0] != "get_scan" for c in client.calls)
+
+
+def test_wait_timeout_da_errore_chiaro():
+    client = _ScanFake(statuses=["RUNNING"])
+    tempi = iter([0, 100])   # deadline a 5, poi "sono passati 100s"
+    with pytest.raises(exceptions.CommandError, match="non è finita"):
+        commands._wait_for_scan(client, "s-9", timeout=5, interval=0,
+                                sleep=lambda _n: None,
+                                monotonic=lambda: next(tempi))
+
+
+# --- host show per indirizzo IP ----------------------------------------------
+
+def test_looks_like_ip():
+    assert commands._looks_like_ip("10.10.10.142")
+    assert not commands._looks_like_ip("h-1")
+    assert not commands._looks_like_ip(
+        "e0a96c8e-8f80-4407-aed0-3eb1cee11c77")
+
+
+def test_host_show_per_ip_risolve_id():
+    client = _ScanFake(statuses=[])
+    (columns, values), _ = _run_with(
+        client, commands.ShowHost, host="10.10.10.142", project=None, scan=None)
+    assert ("list_hosts", None, None, None) in client.calls
+    assert ("get_host", "h-1") in client.calls
+    assert values[columns.index("Indirizzo IP")] == "10.10.10.142"
+
+
+def test_host_show_ip_inesistente_da_errore():
+    client = _ScanFake(statuses=[])
+    with pytest.raises(exceptions.CommandError, match="nessun host con indirizzo"):
+        _run_with(client, commands.ShowHost, host="10.0.0.99",
+                  project=None, scan=None)
