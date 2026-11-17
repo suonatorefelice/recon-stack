@@ -1,5 +1,6 @@
 # La tabella delle scansioni (storico) e l'azione "Avvia scansione".
 
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from horizon import tables
 
@@ -57,6 +58,26 @@ class StartScan(tables.LinkAction):
     policy_rules = ()
 
 
+class ApriDettaglio(tables.LinkAction):
+    """Pulsante in fondo alla riga che apre il dettaglio di una scansione.
+
+    Il dettaglio (fasi, segnalazioni di esposizione, diff) è già raggiungibile
+    cliccando l'ID accorciato, ma come link è poco evidente. Questo pulsante
+    rende il collegamento esplicito, utile soprattutto a scansione finita per
+    andare subito al riepilogo di quella scansione. Resta visibile anche mentre
+    la scansione è in corso: la pagina di dettaglio mostra fase e avanzamento.
+    """
+
+    name = "detail"
+    verbose_name = _("Dettaglio")
+    url = "horizon:recon:scans:detail"
+
+    def get_link_url(self, datum):
+        # datum è la scansione (SimpleNamespace con .id): costruiamo l'URL del
+        # dettaglio con l'id pieno, non con quello accorciato mostrato in tabella.
+        return reverse(self.url, args=[datum.id])
+
+
 class UpdateRow(tables.Row):
     """Rilegge una singola scansione dalla API per l'auto-aggiornamento.
 
@@ -89,5 +110,6 @@ class ScansTable(tables.DataTable):
         name = "scans"
         verbose_name = _("Scansioni")
         table_actions = (StartScan,)
+        row_actions = (ApriDettaglio,)
         row_class = UpdateRow
         status_columns = ("status",)
