@@ -1,5 +1,10 @@
 # Il progetto demo spiegato (`demo/setup_demo.sh`)
 
+> **Vuoi solo *fare* la demo?** La procedura passo-passo, pensata per usare la
+> **dashboard** e il minimo di terminale, è in
+> [guida-demo-dashboard.md](guida-demo-dashboard.md). Questo documento invece
+> spiega *cosa* crea il bersaglio e *perché*.
+
 Questo documento spiega, riga per riga a grandi blocchi, **che cosa fa lo script
 `demo/setup_demo.sh`** e **perché**. Serve a creare su DevStack un progetto di
 prova — `recon-demo` — costruito apposta perché la scansione di Recon-Stack

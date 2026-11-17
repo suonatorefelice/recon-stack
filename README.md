@@ -86,6 +86,10 @@ $ openstack catalog list        # compare il servizio recon-stack, tipo recon
 
 ### La demo, passo per passo
 
+> **Per una demo dal vivo guidata dalla dashboard** (minimo terminale, tutto il
+> resto dal browser) segui [docs/guida-demo-dashboard.md](docs/guida-demo-dashboard.md).
+> La sezione qui sotto mostra invece ogni singolo passo anche da riga di comando.
+
 Tutti i comandi si eseguono **sul nodo DevStack**. Carica una volta le
 credenziali admin, usando il **percorso completo** di `openrc` così funziona da
 qualunque cartella:
@@ -289,6 +293,7 @@ DevStack vero si prova invece con i test tempest in
 | Documento | Contenuto |
 | --- | --- |
 | [Concetti](docs/concetti.md) | OpenStack, DevStack, plugin, nmap e namespace di rete spiegati da zero |
+| [Guida alla demo (dashboard)](docs/guida-demo-dashboard.md) | come *fare* la demo dal vivo: preparazione minima da terminale, poi tutto dalla dashboard |
 | [Demo](docs/demo.md) | cosa crea `setup_demo.sh`, passo per passo, e la segnalazione che ogni pezzo fa comparire |
 | [Glossario](GLOSSARY.md) | i termini del dominio e dei componenti OpenStack |
 | [Architettura](docs/architettura.md) | componenti, confini, sequenza di una scansione, dati conservati |
