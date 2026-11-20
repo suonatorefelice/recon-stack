@@ -1,0 +1,43 @@
+# Carta d'identità del plugin DevStack di Recon-Stack (ADR 0009).
+#
+# DevStack legge questo file subito dopo aver scaricato il repository, prima
+# di installare qualsiasi cosa. Qui si dichiara il plugin, si abilitano i suoi
+# servizi e si definiscono le variabili usate da plugin.sh.
+#
+# Si abilita in local.conf con:
+#   enable_plugin recon-stack https://github.com/suonatorefelice/recon-stack main
+
+define_plugin recon-stack
+
+# Il servizio è un solo processo (ADR 0013): API e scheduler dentro lo stesso
+# uwsgi. Diventa un servizio systemd chiamato devstack@recon-api, che si
+# controlla con
+#   sudo systemctl status devstack@recon-api
+#   sudo journalctl -u devstack@recon-api
+enable_service recon-api
+
+# Dove DevStack ha scaricato il repository ($DEST è di solito /opt/stack).
+RECON_DIR=${RECON_DIR:-$DEST/recon-stack}
+
+# File di configurazione, letto da oslo.config (recon_stack/conf.py).
+RECON_CONF_DIR=${RECON_CONF_DIR:-/etc/recon-stack}
+RECON_CONF=$RECON_CONF_DIR/recon-stack.conf
+
+# Database MySQL (ADR 0001). DevStack ha già un server MySQL acceso per gli
+# altri componenti: il plugin ci crea dentro un database dedicato con questo
+# nome e ne ricava la stringa di connessione (vedi configure_recon_stack).
+RECON_DB_NAME=${RECON_DB_NAME:-recon_stack}
+
+# recon-api: uwsgi in ascolto diretto sulla porta 5238 (ADR 0008).
+RECON_API_PORT=${RECON_API_PORT:-5238}
+RECON_UWSGI=recon_stack.api.wsgi:application
+RECON_UWSGI_CONF=$RECON_CONF_DIR/recon-api-uwsgi.ini
+
+# Tipo del servizio nel catalogo di Keystone. Non è registrato presso
+# l'elenco ufficiale dei tipi OpenStack: è una scelta locale del progetto.
+RECON_SERVICE_TYPE=${RECON_SERVICE_TYPE:-recon}
+
+# Dashboard: i pannelli Horizon (ADR 0010). I file "enabled" del plugin stanno
+# qui e vengono copiati nella cartella di Horizon durante stack (plugin.sh). Si
+# installano solo se Horizon è abilitato su questo DevStack.
+RECON_DASHBOARD_ENABLED_SRC=$RECON_DIR/recon_stack/dashboard/enabled
